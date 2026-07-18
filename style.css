@@ -1,100 +1,466 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --neon-cyan: #00f5ff;
+  --neon-blue: #4d79ff;
+  --neon-purple: #a855f7;
+  --neon-green: #39ff14;
+  --bg-dark: #080b14;
+  --bg-mid: #0d1220;
+  --bg-glass: rgba(13, 18, 32, 0.75);
+  --border-glow: rgba(0, 245, 255, 0.2);
+  --text-primary: #e2e8f0;
+  --text-muted: #64748b;
+  --btn-bg: rgba(0, 245, 255, 0.08);
+  --btn-hover: rgba(0, 245, 255, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-	 background: #333;
-	 font-family: arial, sans-serif;
+  background: var(--bg-dark);
+  font-family: 'Inter', arial, sans-serif;
+  margin: 0;
+  overflow: hidden;
 }
- #appWrap {
-	 position: fixed;
-	 top: 0;
-	 right: 0;
-	 bottom: 0;
-	 left: 0;
+
+/* Animated grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  animation: gridPulse 8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
 }
- #circuits-canvas {
-	 display: block;
-	 width: 100%;
-	 height: 100%;
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
- #deleteBtn {
-	 position: absolute;
-	 top: 0;
-	 left: 0;
-	 padding: 10px;
-	 pointer-events: none;
-	 color: #f05;
-	 font-size: 32px;
-	 line-height: 32px;
-	 width: 32px;
-	 text-align: center;
-	 font-weight: bold;
-	 opacity: 0;
-	 transition: opacity 0.3s, transform 0.3s;
+
+/* Radial vignette glow */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(8,11,20,0.85) 100%);
+  pointer-events: none;
+  z-index: 0;
 }
- #deleteBtn.show {
-	 opacity: 0.8;
+
+#appWrap {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
 }
- #deleteBtn.active {
-	 opacity: 1;
-	 transform: scale(1.75, 1.75);
+
+#circuits-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
- #addBtn, #importBtn, #exportBtn {
-	 position: absolute;
-	 top: 16px;
-	 right: 16px;
-	 font-size: 32px;
-	 font-weight: bold;
+
+/* ─── Delete Button ─────────────────────────────── */
+#deleteBtn {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 10px;
+  pointer-events: none;
+  color: #ff3366;
+  font-size: 36px;
+  line-height: 36px;
+  width: 56px;
+  text-align: center;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  text-shadow: 0 0 20px rgba(255,51,102,0.8);
 }
- #addBtn, #addDropdown > div, #importBtn, #exportBtn {
-	 width: 50px;
-	 height: 50px;
-	 text-align: center;
-	 line-height: 50px;
-	 color: white;
-	 background-color: #0aa;
-	 border-radius: 50px;
-	 box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
-	 cursor: default;
-	 -webkit-user-select: none;
-	 -moz-user-select: none;
-	 user-select: none;
-	 transition: background-color 0.3s;
+
+#deleteBtn.show {
+  opacity: 0.8;
 }
- #addBtn:hover, #addDropdown > div:hover, #importBtn:hover, #exportBtn:hover {
-	 background-color: #0cc;
-	 transition: none;
+
+#deleteBtn.active {
+  opacity: 1;
+  transform: scale(1.75, 1.75);
+  text-shadow: 0 0 30px rgba(255,51,102,1);
 }
- #addDropdown {
-	 display: none;
-	 position: absolute;
-	 top: 70px;
-	 right: 16px;
+
+/* ─── Shared Button Base ────────────────────────── */
+#addBtn, #addDropdown > div, #importBtn, #exportBtn, #examplesBtn {
+  width: 52px;
+  height: 52px;
+  text-align: center;
+  line-height: 52px;
+  color: var(--neon-cyan);
+  background: var(--btn-bg);
+  border-radius: 50%;
+  border: 1px solid var(--border-glow);
+  box-shadow:
+    0 0 12px rgba(0,245,255,0.15),
+    0 4px 16px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s, border-color 0.2s;
+  backdrop-filter: blur(8px);
 }
- #addDropdown > div {
-	 font-size: 14px;
-	 margin-top: 12px;
+
+#addBtn:hover, #addDropdown > div:hover, #importBtn:hover, #exportBtn:hover, #examplesBtn:hover {
+  background: var(--btn-hover);
+  border-color: rgba(0,245,255,0.5);
+  box-shadow:
+    0 0 20px rgba(0,245,255,0.35),
+    0 6px 20px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  transform: translateY(-1px) scale(1.05);
 }
- #importBtn, #exportBtn {
-	 top: auto;
-	 right: auto;
-	 left: 16px;
-	 bottom: 16px;
+
+#addBtn:active, #addDropdown > div:active, #importBtn:active, #exportBtn:active, #examplesBtn:active {
+  transform: translateY(0) scale(0.97);
 }
- #exportBtn {
-	 left: 74px;
+
+/* ─── Add Button ────────────────────────────────── */
+#addBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 28px;
+  font-weight: 300;
+  z-index: 10;
 }
- #exportBtn::after {
-	 content: 'Exported to clipboard.';
-	 position: absolute;
-	 left: 65px;
-	 white-space: nowrap;
-	 font-size: 14px;
-	 pointer-events: none;
-	 opacity: 0;
-	 visibility: hidden;
-	 transition: opacity 1s, visibility 1s;
+
+/* ─── Add Dropdown ──────────────────────────────── */
+#addDropdown {
+  display: none;
+  position: absolute;
+  top: 76px;
+  right: 16px;
+  z-index: 10;
 }
- #exportBtn.show-copy-msg::after {
-	 visibility: visible;
-	 opacity: 1;
-	 transition: none;
+
+#addDropdown > div {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 10px;
 }
- 
+
+/* ─── Import / Export Buttons ───────────────────── */
+#importBtn, #exportBtn {
+  position: absolute;
+  top: auto;
+  right: auto;
+  left: 16px;
+  bottom: 16px;
+  font-size: 20px;
+  z-index: 10;
+}
+
+#exportBtn {
+  left: 78px;
+}
+
+#exportBtn::after {
+  content: 'Copied!';
+  position: absolute;
+  left: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  color: var(--neon-cyan);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glow);
+  border-radius: 6px;
+  padding: 4px 10px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s, visibility 0.4s;
+  backdrop-filter: blur(8px);
+}
+
+#exportBtn.show-copy-msg::after {
+  visibility: visible;
+  opacity: 1;
+  transition: none;
+}
+
+/* ─── Examples Button ───────────────────────────── */
+#examplesBtn {
+  position: absolute;
+  left: 140px;
+  bottom: 16px;
+  font-size: 18px;
+  z-index: 10;
+  color: var(--neon-purple);
+  border-color: rgba(168,85,247,0.25);
+  box-shadow:
+    0 0 12px rgba(168,85,247,0.2),
+    0 4px 16px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+#examplesBtn:hover {
+  border-color: rgba(168,85,247,0.6);
+  box-shadow:
+    0 0 22px rgba(168,85,247,0.45),
+    0 6px 20px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  color: #d8b4fe;
+}
+
+/* ─── Examples Panel ────────────────────────────── */
+#examplesPanel {
+  position: absolute;
+  left: 16px;
+  bottom: 80px;
+  width: 280px;
+  background: var(--bg-glass);
+  border: 1px solid rgba(168,85,247,0.25);
+  border-radius: 16px;
+  padding: 0;
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 0 30px rgba(168,85,247,0.15),
+    0 20px 60px rgba(0,0,0,0.7);
+  z-index: 20;
+  transform-origin: bottom left;
+  overflow: hidden;
+  display: none;
+}
+
+#examplesPanel.panel-open {
+  display: block;
+  animation: panelReveal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes panelReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.panel-header {
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(168,85,247,0.15);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-header-icon {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.panel-header h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--neon-purple);
+  text-shadow: 0 0 10px rgba(168,85,247,0.5);
+  flex: 1;
+}
+
+.panel-header-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.examples-list {
+  padding: 10px;
+}
+
+.example-item {
+  padding: 12px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  border: 1px solid transparent;
+  margin-bottom: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.example-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(168,85,247,0.04), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.example-item:hover::before {
+  opacity: 1;
+}
+
+.example-item:last-child {
+  margin-bottom: 0;
+}
+
+.example-item:hover {
+  background: rgba(168,85,247,0.08);
+  border-color: rgba(168,85,247,0.25);
+  transform: translateX(3px);
+  box-shadow: 0 0 14px rgba(168,85,247,0.12);
+}
+
+.example-item:active {
+  transform: translateX(1px) scale(0.98);
+}
+
+.example-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.example-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.badge-basic {
+  background: rgba(57,255,20,0.12);
+  color: var(--neon-green);
+  border: 1px solid rgba(57,255,20,0.25);
+}
+
+.badge-intermediate {
+  background: rgba(0,245,255,0.12);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(0,245,255,0.25);
+}
+
+.badge-advanced {
+  background: rgba(168,85,247,0.15);
+  color: #c084fc;
+  border: 1px solid rgba(168,85,247,0.3);
+}
+
+.example-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.example-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.example-chips {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.chip-tag {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+  text-transform: uppercase;
+}
+
+/* ─── Tooltip / Instructions ────────────────────── */
+#instructionsHint {
+  position: absolute;
+  bottom: 16px;
+  right: 78px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.2);
+  font-family: 'Inter', sans-serif;
+  pointer-events: none;
+  letter-spacing: 0.02em;
+  animation: hintFade 0.8s ease 2.5s both;
+}
+
+@keyframes hintFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ─── Welcome Toast ─────────────────────────────── */
+#welcomeToast {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glow);
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-size: 13px;
+  color: var(--text-primary);
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 20px rgba(0,245,255,0.1), 0 8px 32px rgba(0,0,0,0.5);
+  white-space: nowrap;
+  animation: toastIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards,
+             toastOut 0.4s ease 4s forwards;
+  z-index: 30;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(0.9); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+}
+
+/* ─── Particle canvas overlay ───────────────────── */
+#particleCanvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ─── Scrollbar ─────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.2); border-radius: 4px; }

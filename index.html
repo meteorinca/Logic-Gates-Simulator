@@ -1,24 +1,57 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
-    <link rel="icon" href="https://img.icons8.com/ios-filled/50/000000/logic-data-types.png" type="image/icon type">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Interactive Logic Gates Simulator — build AND, OR, NOT, XOR, NOR circuits and more with wires and real-time signal propagation.">
+    <link rel="icon" href="https://img.icons8.com/ios-filled/50/00f5ff/logic-data-types.png" type="image/png">
 
     <title>Logic Gates Simulator</title>
-    
+
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type="text/css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link href="style.css" rel="stylesheet" type="text/css" />
   </head>
   <body>
     <div id="appWrap">
-	<canvas id="circuits-canvas" width="1000" height="800">Canvas is not supported in your browser</canvas>
-	<div id="deleteBtn">&times;</div>
-	<div id="addBtn">+</div>
-	<div id="addDropdown"></div>
-	<div id="importBtn" title="Import"><i class="material-icons">file_download</i></div>
-	<div id="exportBtn" title="Export"><i class="material-icons">file_upload</i></div>
-</div>
+      <canvas id="circuits-canvas" width="1000" height="800">Canvas is not supported in your browser</canvas>
+
+      <!-- Delete zone indicator -->
+      <div id="deleteBtn">&times;</div>
+
+      <!-- Add gate menu -->
+      <div id="addBtn">+</div>
+      <div id="addDropdown"></div>
+
+      <!-- Import / Export -->
+      <div id="importBtn" title="Import circuit from JSON"><i class="material-icons">file_download</i></div>
+      <div id="exportBtn" title="Export circuit to clipboard"><i class="material-icons">file_upload</i></div>
+
+      <!-- Examples panel trigger -->
+      <div id="examplesBtn" title="Load example circuit">
+        <i class="material-icons" style="font-size:20px;line-height:52px;">auto_awesome</i>
+      </div>
+
+      <!-- Examples panel -->
+      <div id="examplesPanel">
+        <div class="panel-header">
+          <span class="panel-header-icon">⚡</span>
+          <h3>Examples</h3>
+          <span class="panel-header-sub">click to load</span>
+        </div>
+        <div class="examples-list" id="examplesList"></div>
+      </div>
+
+      <!-- Hint text -->
+      <div id="instructionsHint">drag outputs → inputs &nbsp;|&nbsp; drag canvas to pan &nbsp;|&nbsp; drop on ✕ to delete</div>
+
+      <!-- Welcome toast -->
+      <div id="welcomeToast">⚡ Logic Gates Simulator &nbsp;·&nbsp; Try an example from the ✦ menu!</div>
+    </div>
+
+    <!-- Particle effect canvas -->
+    <canvas id="particleCanvas"></canvas>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.18.2/TweenMax.min.js"></script>
     <script src="https://code.createjs.com/easeljs-0.8.2.min.js"></script>
     <script src="script.js"></script>

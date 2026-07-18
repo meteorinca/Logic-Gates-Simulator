@@ -3,10 +3,11 @@
 // - GSAP for menu animation
 
 // Instructions
-// - Drag from an output connection (blue dot) to an input connection (grey dot) to create a wire.
+// - Drag from an output connection (cyan dot) to an input connection (grey dot) to create a wire.
 // - You may have multiple wires branch off an output, but only one wire per input.
-// - Click a connector (blue or grey dots) to remove all attached wires.
+// - Click a connector (cyan or grey dots) to remove all attached wires.
 // - Click (+) button in top-right corner to add new circuits.
+// - Click (✦) button to load example circuits.
 // - Note that some circuits are interactive
 
 
@@ -38,7 +39,10 @@
 // kick off init
 document.addEventListener('DOMContentLoaded', function() {
 	window.app = AppFactory(Circuit, Wire);
-	
+
+	// init particle system
+	initParticles();
+
 	// enable UI import / export
 	document.getElementById('importBtn').addEventListener('click', function importClickHandler() {
 		var json = window.prompt('Paste JSON and press enter to import - this will reset any current design!');
@@ -55,7 +59,261 @@ document.addEventListener('DOMContentLoaded', function() {
 			}, 1000);
 		}
 	});
+
+	// examples panel
+	initExamplesPanel();
 });
+
+
+// ─── EXAMPLES ──────────────────────────────────────────────────────────────
+
+var EXAMPLES = [
+	{
+		name: 'AND Gate',
+		desc: 'Output is ON only when both inputs are ON.',
+		badge: 'basic',
+		tags: ['AND', 'IN', 'OUT'],
+		data: '{"canvas":{"x":-120,"y":-60},"circuits":[{"type":"button","id":0,"x":100,"y":120,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":0}]}]},{"type":"button","id":1,"x":100,"y":220,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":1}]}]},{"type":"and","id":2,"x":280,"y":170,"output_connections":[{"wires":[{"input_circuit_id":3,"input_index":0}]}]},{"type":"light","id":3,"x":460,"y":170}]}'
+	},
+	{
+		name: 'OR Gate',
+		desc: 'Output is ON when either input is ON.',
+		badge: 'basic',
+		tags: ['OR', 'IN', 'OUT'],
+		data: '{"canvas":{"x":-120,"y":-60},"circuits":[{"type":"button","id":0,"x":100,"y":120,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":0}]}]},{"type":"button","id":1,"x":100,"y":220,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":1}]}]},{"type":"or","id":2,"x":280,"y":170,"output_connections":[{"wires":[{"input_circuit_id":3,"input_index":0}]}]},{"type":"light","id":3,"x":460,"y":170}]}'
+	},
+	{
+		name: 'NOT Gate',
+		desc: 'Output is always the inverse of the input.',
+		badge: 'basic',
+		tags: ['NOT', 'IN', 'OUT'],
+		data: '{"canvas":{"x":-120,"y":-60},"circuits":[{"type":"button","id":0,"x":120,"y":170,"output_connections":[{"wires":[{"input_circuit_id":1,"input_index":0}]}]},{"type":"not","id":1,"x":300,"y":170,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":0}]}]},{"type":"light","id":2,"x":480,"y":170}]}'
+	},
+	{
+		name: 'XOR Gate',
+		desc: 'ON when inputs differ. OFF when both same.',
+		badge: 'basic',
+		tags: ['XOR', 'IN', 'OUT'],
+		data: '{"canvas":{"x":-120,"y":-60},"circuits":[{"type":"button","id":0,"x":100,"y":120,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":0}]}]},{"type":"button","id":1,"x":100,"y":220,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":1}]}]},{"type":"xor","id":2,"x":280,"y":170,"output_connections":[{"wires":[{"input_circuit_id":3,"input_index":0}]}]},{"type":"light","id":3,"x":460,"y":170}]}'
+	},
+	{
+		name: 'NOR Gate',
+		desc: 'Output is ON only when both inputs are OFF.',
+		badge: 'basic',
+		tags: ['NOR', 'IN', 'OUT'],
+		data: '{"canvas":{"x":-120,"y":-60},"circuits":[{"type":"button","id":0,"x":100,"y":120,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":0}]}]},{"type":"button","id":1,"x":100,"y":220,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":1}]}]},{"type":"nor","id":2,"x":280,"y":170,"output_connections":[{"wires":[{"input_circuit_id":3,"input_index":0}]}]},{"type":"light","id":3,"x":460,"y":170}]}'
+	},
+	{
+		name: 'SR Latch',
+		desc: 'Set/Reset memory. Holds state between button presses.',
+		badge: 'intermediate',
+		tags: ['NOR', 'IN', 'OUT'],
+		data: '{"canvas":{"x":-200,"y":-110},"circuits":[{"type":"button","id":0,"x":80,"y":100,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":0}]}]},{"type":"button","id":1,"x":80,"y":300,"output_connections":[{"wires":[{"input_circuit_id":3,"input_index":0}]}]},{"type":"nor","id":2,"x":280,"y":100,"output_connections":[{"wires":[{"input_circuit_id":3,"input_index":1},{"input_circuit_id":4,"input_index":0}]}]},{"type":"nor","id":3,"x":280,"y":300,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":1},{"input_circuit_id":5,"input_index":0}]}]},{"type":"light","id":4,"x":460,"y":100},{"type":"light","id":5,"x":460,"y":300}]}'
+	},
+	{
+		name: 'Half Adder',
+		desc: 'Adds two bits. Top light = Sum, bottom = Carry.',
+		badge: 'intermediate',
+		tags: ['XOR', 'AND', 'IN', 'OUT'],
+		data: '{"canvas":{"x":-220,"y":-120},"circuits":[{"type":"button","id":0,"x":80,"y":130,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":0},{"input_circuit_id":3,"input_index":0}]}]},{"type":"button","id":1,"x":80,"y":270,"output_connections":[{"wires":[{"input_circuit_id":2,"input_index":1},{"input_circuit_id":3,"input_index":1}]}]},{"type":"xor","id":2,"x":280,"y":130,"output_connections":[{"wires":[{"input_circuit_id":4,"input_index":0}]}]},{"type":"and","id":3,"x":280,"y":270,"output_connections":[{"wires":[{"input_circuit_id":5,"input_index":0}]}]},{"type":"light","id":4,"x":460,"y":130},{"type":"light","id":5,"x":460,"y":270}]}'
+	},
+	{
+		name: 'Blinking Clock',
+		desc: 'Ticker pulses a light repeatedly. Adjust speed with arrows.',
+		badge: 'advanced',
+		tags: ['TCK', 'OUT'],
+		data: '{"canvas":{"x":-140,"y":-60},"circuits":[{"type":"ticker","id":0,"x":120,"y":200,"data":{"off_time":6},"output_connections":[{"wires":[{"input_circuit_id":1,"input_index":0}]}]},{"type":"light","id":1,"x":340,"y":200}]}'
+	}
+];
+
+function initExamplesPanel() {
+	var btn = document.getElementById('examplesBtn');
+	var panel = document.getElementById('examplesPanel');
+	var list = document.getElementById('examplesList');
+	var isOpen = false;
+
+	// build list
+	EXAMPLES.forEach(function(ex, idx) {
+		var item = document.createElement('div');
+		item.className = 'example-item';
+		item.innerHTML =
+			'<div class="example-item-header">' +
+				'<span class="example-badge badge-' + ex.badge + '">' + ex.badge + '</span>' +
+				'<span class="example-name">' + ex.name + '</span>' +
+			'</div>' +
+			'<div class="example-desc">' + ex.desc + '</div>' +
+			'<div class="example-chips">' +
+				ex.tags.map(function(t) { return '<span class="chip-tag">' + t + '</span>'; }).join('') +
+			'</div>';
+
+		item.addEventListener('click', function() {
+			loadExample(ex.data);
+			closePanel();
+		});
+
+		list.appendChild(item);
+	});
+
+	function openPanel() {
+		isOpen = true;
+		panel.style.display = 'block';
+		// Force reflow then add class for animation
+		panel.offsetHeight;
+		panel.classList.add('panel-open');
+	}
+
+	function closePanel() {
+		isOpen = false;
+		panel.classList.remove('panel-open');
+		setTimeout(function() {
+			if (!isOpen) panel.style.display = 'none';
+		}, 300);
+	}
+
+	btn.addEventListener('click', function(e) {
+		e.stopPropagation();
+		if (isOpen) closePanel();
+		else openPanel();
+	});
+
+	// close on outside click
+	document.addEventListener('click', function(e) {
+		if (isOpen && !panel.contains(e.target) && e.target !== btn) {
+			closePanel();
+		}
+	});
+}
+
+function loadExample(jsonStr) {
+	// Fix up wire connections - examples use a simplified format, needs rebuilding
+	var data;
+	try { data = JSON.parse(jsonStr); } catch(e) { return; }
+
+	// clear canvas
+	for (var i = Circuit.active.length - 1; i >= 0; i--) {
+		Circuit.active[i].remove();
+	}
+
+	// position canvas at center
+	var cx = app.stage.canvas.width / 2 / app.scale;
+	var cy = app.stage.canvas.height / 2 / app.scale;
+	app.circuits.x = app.wires.x = cx + (data.canvas ? data.canvas.x : 0);
+	app.circuits.y = app.wires.y = cy + (data.canvas ? data.canvas.y : 0);
+
+	// create circuits
+	var highest_id = 0;
+	for (var i = 0; i < data.circuits.length; i++) {
+		var c = data.circuits[i];
+		if (c.id > highest_id) highest_id = c.id;
+		var cdata = c.data || {};
+		cdata.delay = c.delay || 1;
+		var nc = makeType(c.type, c.x, c.y, cdata);
+		nc.id = c.id;
+	}
+	Circuit.setNextId(highest_id + 1);
+
+	// wire them up using output_connections on each circuit
+	for (var i = 0; i < data.circuits.length; i++) {
+		var c = data.circuits[i];
+		if (!c.output_connections) continue;
+		var src = Circuit.findById(c.id);
+		if (!src) continue;
+		for (var n = 0; n < c.output_connections.length; n++) {
+			var o = c.output_connections[n];
+			if (!o.wires || !o.wires.length) continue;
+			for (var j = 0; j < o.wires.length; j++) {
+				var w = o.wires[j];
+				var dst = Circuit.findById(w.input_circuit_id);
+				if (!dst) continue;
+				var out_conn = src.outputs[n];
+				var in_conn = dst.inputs[w.input_index];
+				if (!out_conn || !in_conn) continue;
+				in_conn.recycleWires();
+				var wire = Wire.new(out_conn, in_conn);
+				out_conn.wires.push(wire);
+				in_conn.wires.push(wire);
+				app.wires.addChild(wire.gfx);
+				wire.powerChange(src.has_power);
+			}
+		}
+	}
+
+	// also handle button->gate connections stored on button nodes
+	for (var i = 0; i < data.circuits.length; i++) {
+		var c = data.circuits[i];
+		if (!c.output_connections) continue; // already handled above
+	}
+
+	app.needs_update = true;
+}
+
+
+// ─── PARTICLE SYSTEM ───────────────────────────────────────────────────────
+
+var particles = [];
+var pCanvas, pCtx;
+
+function initParticles() {
+	pCanvas = document.getElementById('particleCanvas');
+	pCanvas.width = window.innerWidth;
+	pCanvas.height = window.innerHeight;
+	pCtx = pCanvas.getContext('2d');
+
+	window.addEventListener('resize', function() {
+		pCanvas.width = window.innerWidth;
+		pCanvas.height = window.innerHeight;
+	});
+
+	requestAnimationFrame(tickParticles);
+}
+
+function spawnParticles(x, y, powered) {
+	var color = powered ? '#00f5ff' : '#0088aa';
+	var count = powered ? 10 : 5;
+	for (var i = 0; i < count; i++) {
+		var angle = Math.random() * Math.PI * 2;
+		var speed = 1 + Math.random() * 3;
+		particles.push({
+			x: x, y: y,
+			vx: Math.cos(angle) * speed,
+			vy: Math.sin(angle) * speed,
+			life: 1,
+			decay: 0.03 + Math.random() * 0.04,
+			size: 2 + Math.random() * 3,
+			color: color
+		});
+	}
+}
+
+function tickParticles() {
+	requestAnimationFrame(tickParticles);
+	if (!pCtx) return;
+	pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+
+	for (var i = particles.length - 1; i >= 0; i--) {
+		var p = particles[i];
+		p.x += p.vx;
+		p.y += p.vy;
+		p.vy += 0.05; // gravity
+		p.life -= p.decay;
+
+		if (p.life <= 0) {
+			particles.splice(i, 1);
+			continue;
+		}
+
+		pCtx.save();
+		pCtx.globalAlpha = p.life;
+		pCtx.shadowColor = p.color;
+		pCtx.shadowBlur = 8;
+		pCtx.fillStyle = p.color;
+		pCtx.beginPath();
+		pCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+		pCtx.fill();
+		pCtx.restore();
+	}
+}
+
 
 
 function AppFactory(Circuit, Wire) {
@@ -312,12 +570,17 @@ function AppFactory(Circuit, Wire) {
 	window.addEventListener('resize', resizeStage);
 
 
+	// Load the AND gate example as the default starting circuit
 	setTimeout(function() {
-		var centerX = window.innerWidth / 2;
-		var centerY = window.innerHeight / 2;
-		makeButton(centerX - 100, centerY);
-		makeLight(centerX + 100, centerY);
-	}, 0);
+		if (typeof EXAMPLES !== 'undefined' && EXAMPLES.length) {
+			loadExample(EXAMPLES[0].data);
+		} else {
+			var centerX = window.innerWidth / 2;
+			var centerY = window.innerHeight / 2;
+			makeButton(centerX - 100, centerY);
+			makeLight(centerX + 100, centerY);
+		}
+	}, 100);
 
 
 	return App;
@@ -404,16 +667,23 @@ function makeButton(x, y) {
 
 	// render toggle button to show current generator state
 	function renderButton() {
-		var btn_color = c.has_power ? Wire.on_color : Wire.off_color;
-		var icon_color = c.has_power ? Wire.off_color : 'white';
+		var on = c.has_power;
+		var btn_color = on ? Wire.on_color : '#1a3040';
+		var ring_color = on ? '#ffffff' : 'rgba(0,245,255,0.4)';
 
 		toggle_btn.graphics.clear();
+		// outer glow ring
+		if (on) {
+			toggle_btn.graphics.setStrokeStyle(3);
+			toggle_btn.graphics.beginStroke('rgba(0,245,255,0.3)');
+			toggle_btn.graphics.drawCircle(0, 0, 22);
+		}
 		toggle_btn.graphics.beginFill(btn_color);
 		toggle_btn.graphics.drawCircle(0, 0, 18);
 		toggle_btn.graphics.setStrokeStyle(2);
-		toggle_btn.graphics.beginStroke(icon_color);
+		toggle_btn.graphics.beginStroke(ring_color);
 		toggle_btn.graphics.drawCircle(0, 0, 10);
-		toggle_btn.graphics.beginStroke(icon_color);
+		toggle_btn.graphics.beginStroke(ring_color);
 		toggle_btn.graphics.moveTo(0, -4);
 		toggle_btn.graphics.lineTo(0, 4);
 		toggle_btn.graphics.endStroke();
@@ -446,9 +716,19 @@ function makeLight(x, y) {
 	c.powerChanged = renderLight;
 
 	function renderLight() {
-		var light_color = c.has_power ? Wire.on_color : Wire.off_color;
+		var on = c.has_power;
+		var light_color = on ? Wire.on_color : '#1a3040';
 
 		light_gfx.graphics.clear();
+		if (on) {
+			// glow ring
+			light_gfx.graphics.setStrokeStyle(4);
+			light_gfx.graphics.beginStroke('rgba(0,245,255,0.25)');
+			light_gfx.graphics.drawCircle(0, 0, 24);
+			light_gfx.graphics.setStrokeStyle(2);
+			light_gfx.graphics.beginStroke('rgba(0,245,255,0.5)');
+			light_gfx.graphics.drawCircle(0, 0, 20);
+		}
 		light_gfx.graphics.beginFill(light_color);
 		light_gfx.graphics.drawCircle(0, 0, 18);
 
@@ -761,9 +1041,14 @@ var Circuit = (function CircuitFactory() {
 		// chip base (draggable part)
 		this.chip_radius = 40;
 		this.chip = new createjs.Shape();
-		this.chip.graphics.setStrokeStyle(2);
-		this.chip.graphics.beginStroke('#777');
-		this.chip.graphics.beginFill('#555');
+		this.chip.graphics.setStrokeStyle(1.5);
+		this.chip.graphics.beginStroke('rgba(0,245,255,0.3)');
+		this.chip.graphics.beginRadialGradientFill(
+			['#1a2540', '#0d1628'],
+			[0, 1],
+			0, 0, 0,
+			0, 0, this.chip_radius
+		);
 		this.chip.graphics.drawCircle(0, 0, this.chip_radius);
 
 		// optional label (also draggable)
@@ -775,10 +1060,10 @@ var Circuit = (function CircuitFactory() {
 
 		// create label if provided
 		if (label) {
-			this.label = new createjs.Text(label, 'bold 14px Arial', '#FFF');
+			this.label = new createjs.Text(label, 'bold 13px "JetBrains Mono", monospace', '#00f5ff');
 			this.label.textAlign = 'center';
 			var label_rect = this.label.getBounds();
-			this.label.cache(label_rect.x, label_rect.y, label_rect.width, label_rect.height);
+			this.label.cache(label_rect.x - 2, label_rect.y - 2, label_rect.width + 4, label_rect.height + 4);
 			this.label.x = 0;
 			this.label.y = -8;
 			this.draggable.addChild(this.label);
@@ -1004,15 +1289,15 @@ var Circuit = (function CircuitFactory() {
 	// reusable connector graphics instance
 	var connector_radius = 7;
 	var connector_input_gfx = new createjs.Graphics();
-	connector_input_gfx.setStrokeStyle(2);
-	connector_input_gfx.beginStroke('#AAA');
-	connector_input_gfx.beginFill('#888');
+	connector_input_gfx.setStrokeStyle(1.5);
+	connector_input_gfx.beginStroke('rgba(150,180,200,0.6)');
+	connector_input_gfx.beginFill('#2a3a4a');
 	connector_input_gfx.drawCircle(0, 0, connector_radius);
 
 	var connector_output_gfx = new createjs.Graphics();
-	connector_output_gfx.setStrokeStyle(2);
-	connector_output_gfx.beginStroke('#0AA');
-	connector_output_gfx.beginFill('#088');
+	connector_output_gfx.setStrokeStyle(1.5);
+	connector_output_gfx.beginStroke('#00f5ff');
+	connector_output_gfx.beginFill('#0a4a55');
 	connector_output_gfx.drawCircle(0, 0, connector_radius);
 
 	// connector constructor
@@ -1066,8 +1351,8 @@ var Wire = (function WireFactory() {
 		this.input = null;
 	};
 
-	Wire.on_color = '#0FF';
-	Wire.off_color = '#088';
+	Wire.on_color = '#00f5ff';
+	Wire.off_color = '#1a4a50';
 
 	Wire.prototype.draw = function draw(straight_wire) {
 		app.needs_update = true;
@@ -1118,7 +1403,8 @@ var Wire = (function WireFactory() {
 
 		// render line
 		this.gfx.graphics.clear();
-		this.gfx.graphics.setStrokeStyle(2);
+		var strokeWidth = this.has_power ? 2.5 : 1.5;
+		this.gfx.graphics.setStrokeStyle(strokeWidth);
 		this.gfx.graphics.beginStroke(this.has_power ? Wire.on_color : Wire.off_color);
 		this.gfx.graphics.moveTo(fromX, fromY);
 		if (straight_wire) {
@@ -1138,8 +1424,15 @@ var Wire = (function WireFactory() {
 	};
 
 	Wire.prototype.powerChange = function powerChange(power) {
+		var changed = this.has_power !== power;
 		this.has_power = power;
 		this.draw();
+		if (changed && typeof spawnParticles === 'function' && this.input) {
+			// Get screen coords of the input connector
+			var ix = this.input.globalX + (app.wires.x || 0);
+			var iy = this.input.globalY + (app.wires.y || 0);
+			spawnParticles(ix, iy, power);
+		}
 		this.input && this.input.circuit.inputChange();
 	};
 

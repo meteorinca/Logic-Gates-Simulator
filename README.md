@@ -1,7 +1,5 @@
 # Logic Gates Simulation
 
-*Coded 1600 Lines in 4 ½ hours.*
-
 ## Libraries Used :
 - EaselJS for display and event models
 - GSAP for menu animation
@@ -31,5 +29,3 @@
 - TCK: A set frequency ticker that pulses a single tick signal every `n` ticks (configurable)
 - DLY: Carries a signal after a delay of `n` ticks (configurable)
 
-
-## Live Demo : https://Logic-Gates-Simulator.siddhantkcode.repl.co 
