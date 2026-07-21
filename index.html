@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Interactive Logic Gates Simulator — build AND, OR, NOT, XOR, NOR circuits and more with wires and real-time signal propagation.">
-    <link rel="icon" href="https://img.icons8.com/ios-filled/50/00f5ff/logic-data-types.png" type="image/png">
+    <link rel="icon" href="https://img.icons8.com/ios-filled/50/3b6ef0/logic-data-types.png" type="image/png">
 
     <title>Logic Gates Simulator</title>
 
@@ -23,13 +23,23 @@
       <div id="addBtn">+</div>
       <div id="addDropdown"></div>
 
-      <!-- Import / Export -->
+      <!-- Import / Export (bottom-left) -->
       <div id="importBtn" title="Import circuit from JSON"><i class="material-icons">file_download</i></div>
       <div id="exportBtn" title="Export circuit to clipboard"><i class="material-icons">file_upload</i></div>
 
       <!-- Examples panel trigger -->
       <div id="examplesBtn" title="Load example circuit">
         <i class="material-icons" style="font-size:20px;line-height:52px;">auto_awesome</i>
+      </div>
+
+      <!-- Play / Pause (bottom-right, left of theme) -->
+      <div id="playPauseBtn" title="Pause simulation">
+        <i class="material-icons" id="playPauseIcon" style="font-size:22px;line-height:52px;">pause</i>
+      </div>
+
+      <!-- Theme toggle (bottom-right corner) -->
+      <div id="themeBtn" title="Toggle dark mode">
+        <i class="material-icons" id="themeIcon" style="font-size:22px;line-height:52px;">dark_mode</i>
       </div>
 
       <!-- Examples panel -->
@@ -42,8 +52,11 @@
         <div class="examples-list" id="examplesList"></div>
       </div>
 
+      <!-- Paused banner -->
+      <div id="pauseBanner">⏸ SIMULATION PAUSED</div>
+
       <!-- Hint text -->
-      <div id="instructionsHint">drag outputs → inputs &nbsp;|&nbsp; drag canvas to pan &nbsp;|&nbsp; drop on ✕ to delete</div>
+      <div id="instructionsHint">drag outputs → inputs &nbsp;·&nbsp; drag canvas to pan &nbsp;·&nbsp; drop on ✕ to delete</div>
 
       <!-- Welcome toast -->
       <div id="welcomeToast">⚡ Logic Gates Simulator &nbsp;·&nbsp; Try an example from the ✦ menu!</div>

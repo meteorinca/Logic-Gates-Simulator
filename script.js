@@ -62,6 +62,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
 	// examples panel
 	initExamplesPanel();
+
+	// ── Theme toggle ──────────────────────────────────
+	var themeBtn  = document.getElementById('themeBtn');
+	var themeIcon = document.getElementById('themeIcon');
+	var html      = document.documentElement;
+
+	themeBtn.addEventListener('click', function() {
+		var isDark = html.getAttribute('data-theme') === 'dark';
+		html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+		themeIcon.textContent = isDark ? 'dark_mode' : 'light_mode';
+		// update canvas colors for new theme
+		var dark = !isDark;
+		Wire.on_color  = dark ? '#00f5ff' : '#2563eb';
+		Wire.off_color = dark ? '#1a4a50' : '#bfdbfe';
+		// redraw all existing wires
+		app.needs_update = true;
+		Circuit.active.forEach(function(c) { c.gfx.updateCache(); });
+		var wireChildren = app.wires.children;
+		for (var i = 0; i < wireChildren.length; i++) {
+			var w = wireChildren[i];
+			if (w._wire) w._wire.draw();
+		}
+		// repropagateAll to repaint wires through active circuits
+		repropagateAll();
+	});
+
+	// ── Play / Pause ──────────────────────────────────
+	var playPauseBtn  = document.getElementById('playPauseBtn');
+	var playPauseIcon = document.getElementById('playPauseIcon');
+	var pauseBanner   = document.getElementById('pauseBanner');
+
+	playPauseBtn.addEventListener('click', function() {
+		if (app.paused) {
+			app.resume();
+			playPauseIcon.textContent = 'pause';
+			playPauseBtn.classList.remove('paused');
+			playPauseBtn.title = 'Pause simulation';
+			pauseBanner.classList.remove('visible');
+		} else {
+			app.pause();
+			playPauseIcon.textContent = 'play_arrow';
+			playPauseBtn.classList.add('paused');
+			playPauseBtn.title = 'Resume simulation';
+			pauseBanner.classList.add('visible');
+		}
+	});
 });
 
 
@@ -882,16 +928,34 @@ function makeTicker(x, y, set_off_time) {
 	var delay = app.propagation_delay;
 	var off_time = c.data.off_time = set_off_time || 10; // propagation ticks
 	var on_time = delay;
+	var tickerActive = true;
+
 	setTimeout(toggleGenerator, off_time * delay);
 
 
 	// toggle power state and broadcast change
 	function toggleGenerator() {
+		if (app.paused) {
+			// store that we were mid-tick; resume() will restart
+			c._tickerNeedsResume = true;
+			return;
+		}
+		if (!tickerActive) return;
 		c.has_power = !c.has_power;
 		renderLight(c);
 		setTimeout(toggleGenerator, c.has_power ? on_time : off_time * delay);
 		c.broadcastPower();
 	}
+
+	// expose resume hook so AppFactory.resume() can restart this ticker
+	c._tickerResume = function() {
+		c._tickerNeedsResume = false;
+		setTimeout(toggleGenerator, c.has_power ? on_time : off_time * delay);
+	};
+
+	// stop ticker when circuit is removed
+	var _origRemove = c.remove.bind(c);
+	c.remove = function() { tickerActive = false; _origRemove(); };
 
 
 	// create light
@@ -1211,7 +1275,10 @@ var Circuit = (function CircuitFactory() {
 		app.needs_update = true;
 		// callback
 		if (this.powerChanged) this.powerChanged(this.has_power);
-		
+
+		// do not propagate when paused
+		if (app.paused) return;
+
 		// send signal through wires
 		var delay = app.propagation_delay;
 		for (var i = this.outputs.length - 1; i >= 0; i--) {
@@ -1258,13 +1325,12 @@ var Circuit = (function CircuitFactory() {
 	};
 
 
-	// drag events
-	var drag_offset = new createjs.Point();
+	// drag events — stored per-circuit instance so multi-touch works
 	var remove_box_size = 50;
 	function mouseDownHandler(evt) {
 		app.delete_btn.show();
-		drag_offset.x = evt.localX;
-		drag_offset.y = evt.localY;
+		this._dragOffsetX = evt.localX;
+		this._dragOffsetY = evt.localY;
 	}
 
 	function pressMoveHandler(evt) {
@@ -1275,7 +1341,7 @@ var Circuit = (function CircuitFactory() {
 			app.delete_btn.inactive();
 		}
 
-		this.setPosition(this.gfx.x + evt.localX - drag_offset.x, this.gfx.y + evt.localY - drag_offset.y);
+		this.setPosition(this.gfx.x + evt.localX - (this._dragOffsetX || 0), this.gfx.y + evt.localY - (this._dragOffsetY || 0));
 	}
 
 	function pressUpHandler(evt) {
