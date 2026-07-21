@@ -78,7 +78,15 @@ document.addEventListener('DOMContentLoaded', function() {
 		Wire.off_color = dark ? '#1a4a50' : '#bfdbfe';
 		// redraw all existing wires
 		app.needs_update = true;
-		Circuit.active.forEach(function(c) { c.gfx.updateCache(); });
+		Circuit.active.forEach(function(c) {
+			if (typeof c.renderModeBtn === 'function') {
+				c.renderModeBtn();
+			}
+			c.gfx.updateCache();
+		});
+		if (typeof updateShortcuts === 'function') {
+			updateShortcuts();
+		}
 		var wireChildren = app.wires.children;
 		for (var i = 0; i < wireChildren.length; i++) {
 			var w = wireChildren[i];
@@ -696,20 +704,58 @@ function makeButton(x, y) {
 	var c = new Circuit('button', 0, 1);
 	c.add(x, y);
 
+	c.data.is_toggle = false;
 
 	// create toggle button
 	var toggle_btn = new createjs.Shape();
 	c.gfx.addChild(toggle_btn);
-	toggle_btn.on('mousedown', toggleGenerator);
-	toggle_btn.on('pressup', toggleGenerator);
 
+	// create mode toggle button in top-right corner
+	var mode_btn = new createjs.Shape();
+	mode_btn.x = 22;
+	mode_btn.y = -22;
+	c.gfx.addChild(mode_btn);
 
-	// toggle power state and broadcast change
-	function toggleGenerator() {
-		c.has_power = !c.has_power;
-		renderButton(c);
+	toggle_btn.on('mousedown', handleMouseDown);
+	toggle_btn.on('pressup', handlePressUp);
+
+	mode_btn.on('click', toggleMode);
+
+	function handleMouseDown(evt) {
+		if (c.data.is_toggle) {
+			c.has_power = !c.has_power;
+		} else {
+			c.has_power = true;
+		}
+		renderButton();
 		c.broadcastPower();
 	}
+
+	function handlePressUp(evt) {
+		if (!c.data.is_toggle) {
+			c.has_power = false;
+			renderButton();
+			c.broadcastPower();
+		}
+	}
+
+	function toggleMode(evt) {
+		if (evt) evt.stopPropagation();
+		c.data.is_toggle = !c.data.is_toggle;
+		if (!c.data.is_toggle && c.has_power) {
+			c.has_power = false;
+			c.broadcastPower();
+		}
+		renderButton();
+		renderModeBtn();
+		app.needs_update = true;
+	}
+
+	c.powerChanged = function() {
+		renderButton();
+	};
+
+	c.renderModeBtn = renderModeBtn;
 
 	// render toggle button to show current generator state
 	function renderButton() {
@@ -737,8 +783,30 @@ function makeButton(x, y) {
 		c.gfx.updateCache();
 	}
 
+	function renderModeBtn() {
+		var active = c.data.is_toggle;
+		var activeColor = Wire.on_color || '#00f5ff';
+		
+		mode_btn.graphics.clear();
+		// hit area background for easier clicking
+		mode_btn.graphics.beginFill('rgba(0,0,0,0.01)').drawCircle(0, 0, 10);
+		
+		// track
+		mode_btn.graphics.beginFill(active ? 'rgba(0,245,255,0.2)' : '#1a3040')
+			.beginStroke(active ? activeColor : '#64748b')
+			.setStrokeStyle(1)
+			.drawRoundRect(-8, -5, 16, 10, 5);
+		
+		// knob
+		mode_btn.graphics.beginFill(active ? activeColor : '#64748b')
+			.drawCircle(active ? 4 : -4, 0, 3.5);
+			
+		c.gfx.updateCache();
+	}
+
 	// initial render
 	renderButton();
+	renderModeBtn();
 
 	// no inputs
 	return c;
@@ -1299,6 +1367,9 @@ var Circuit = (function CircuitFactory() {
 		app.circuits.addChild(this.gfx);
 		Circuit.active.push(this);
 		this.setPosition(x, y);
+		if (typeof updateShortcuts === 'function') {
+			updateShortcuts();
+		}
 	};
 
 	// remove circuit from stage and active array, recycling connected wires
@@ -1321,6 +1392,9 @@ var Circuit = (function CircuitFactory() {
 				}
 				break;
 			}
+		}
+		if (typeof updateShortcuts === 'function') {
+			updateShortcuts();
 		}
 	};
 
@@ -1579,6 +1653,65 @@ var MyMath = {
 
 
 
+
+function updateShortcuts() {
+	if (typeof Circuit === 'undefined' || !Circuit.active) return;
+	
+	// Filter and sort active button inputs
+	var buttons = Circuit.active
+		.filter(function(c) { return c.type === 'button'; })
+		.sort(function(a, b) {
+			if (Math.abs(a.gfx.y - b.gfx.y) < 15) {
+				return a.gfx.x - b.gfx.x;
+			}
+			return a.gfx.y - b.gfx.y;
+		});
+
+	// Remove shortcut indicators from all buttons
+	Circuit.active.forEach(function(c) {
+		if (c.type === 'button') {
+			c.shortcutKey = null;
+			if (c.shortcutGfx) {
+				c.draggable.removeChild(c.shortcutGfx);
+				c.shortcutGfx = null;
+			}
+		}
+	});
+
+	// Draw new shortcut indicators
+	buttons.forEach(function(c, index) {
+		if (index < 9) {
+			var key = (index + 1).toString();
+			c.shortcutKey = key;
+			
+			var container = new createjs.Container();
+			container.x = -26;
+			container.y = -26;
+			
+			var activeColor = Wire.on_color || '#00f5ff';
+			var bg = new createjs.Shape();
+			bg.graphics.beginFill(activeColor === '#00f5ff' ? 'rgba(0, 245, 255, 0.15)' : 'rgba(37, 99, 235, 0.1)')
+				.beginStroke(activeColor)
+				.setStrokeStyle(1)
+				.drawRoundRect(0, 0, 14, 14, 3);
+			
+			var text = new createjs.Text(key, '10px "JetBrains Mono", monospace', activeColor);
+			text.textAlign = 'center';
+			text.textBaseline = 'middle';
+			text.x = 7;
+			text.y = 7;
+			
+			container.addChild(bg, text);
+			c.draggable.addChild(container);
+			c.shortcutGfx = container;
+			c.gfx.updateCache();
+		}
+	});
+	
+	if (typeof app !== 'undefined') {
+		app.needs_update = true;
+	}
+}
 
 function saveProject(pretty_print) {
 	var json = {};

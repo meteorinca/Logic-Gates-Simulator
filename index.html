@@ -32,6 +32,11 @@
         <i class="material-icons" style="font-size:20px;line-height:52px;">auto_awesome</i>
       </div>
 
+      <!-- Tutorial panel trigger -->
+      <div id="learnBtn" title="Interactive tutorials">
+        <i class="material-icons" style="font-size:22px;line-height:52px;">school</i>
+      </div>
+
       <!-- Play / Pause (bottom-right, left of theme) -->
       <div id="playPauseBtn" title="Pause simulation">
         <i class="material-icons" id="playPauseIcon" style="font-size:22px;line-height:52px;">pause</i>
@@ -52,6 +57,21 @@
         <div class="examples-list" id="examplesList"></div>
       </div>
 
+      <!-- Tutorial panel -->
+      <div id="learnPanel">
+        <div class="panel-header">
+          <span class="panel-header-icon" style="color:var(--neon-cyan)">🎓</span>
+          <select id="learnTOC" title="Select a lesson"></select>
+        </div>
+        <div id="learnProgressBar"><div id="learnProgress"></div></div>
+        <div class="panel-content" id="learnContent"></div>
+        <div class="panel-footer">
+          <button id="learnBackBtn" class="learn-footer-btn" title="Previous Slide">◀</button>
+          <button id="learnResetBtn" class="learn-footer-btn reset" title="Reset Circuit">Reset</button>
+          <button id="learnNextBtn" class="learn-footer-btn active-next" title="Next Slide">Next ➔</button>
+        </div>
+      </div>
+
       <!-- Paused banner -->
       <div id="pauseBanner">⏸ SIMULATION PAUSED</div>
 
@@ -68,5 +88,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.18.2/TweenMax.min.js"></script>
     <script src="https://code.createjs.com/easeljs-0.8.2.min.js"></script>
     <script src="script.js"></script>
+    <script src="tutorials.js"></script>
   </body>
 </html>

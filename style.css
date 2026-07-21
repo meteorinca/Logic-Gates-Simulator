@@ -470,3 +470,296 @@ html[data-theme="dark"] .badge-advanced     { color: #c084fc; border-color: rgba
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 4px; }
+
+/* ─── Learn Button & Panel ──────────────────────── */
+#learnBtn {
+  position: absolute;
+  left: 202px; bottom: 16px;
+  font-size: 20px;
+  z-index: 10;
+  color: var(--neon-cyan);
+  border-color: rgba(14, 165, 233, 0.25);
+}
+#learnBtn:hover {
+  border-color: rgba(14, 165, 233, 0.55);
+}
+
+#learnPanel {
+  position: absolute;
+  left: 16px; bottom: 80px;
+  width: 320px;
+  max-height: calc(100vh - 120px);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 0 30px var(--panel-shadow), 0 20px 60px rgba(0,0,0,0.15);
+  z-index: 20;
+  transform-origin: bottom left;
+  display: none;
+  transition: background 0.35s, border-color 0.35s;
+  flex-direction: column;
+}
+#learnPanel.panel-open {
+  display: flex;
+  animation: panelReveal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+#learnPanel .panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#learnTOC {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  outline: none;
+  padding-right: 20px;
+}
+#learnTOC option {
+  background: var(--bg-mid);
+  color: var(--text-primary);
+}
+
+/* Progress bar under header */
+#learnProgressBar {
+  width: 100%;
+  height: 3px;
+  background: rgba(14, 165, 233, 0.1);
+  overflow: hidden;
+}
+#learnProgress {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+  transition: width 0.3s ease;
+}
+
+/* Learn content area */
+#learnContent {
+  padding: 16px;
+  overflow-y: auto;
+  flex-grow: 1;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+#learnContent p {
+  margin: 0 0 10px 0;
+}
+#learnContent p:last-child {
+  margin-bottom: 0;
+}
+
+/* Theory slides custom elements */
+.theory-box {
+  background: var(--btn-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 12px 0;
+}
+.state-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.state-item:last-child {
+  margin-bottom: 0;
+}
+.badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.badge.high {
+  background: rgba(14, 165, 233, 0.15);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+.badge.low {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-muted);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.transistor-diag {
+  background: var(--bg-mid);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.terminal {
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+}
+
+.schematic {
+  background: var(--bg-mid);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.schematic-node {
+  padding: 4px 10px;
+  background: var(--btn-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+.schematic-node.pm {
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+.schematic-node.nm {
+  border-color: rgba(14, 165, 233, 0.3);
+  color: var(--neon-cyan);
+}
+.schematic-line {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Lab checklist */
+.instructions-text {
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+.goals-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.goal-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-mid);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: border-color 0.25s, background 0.25s;
+}
+.goal-item.completed {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.05);
+}
+.goal-item .checkbox {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--text-muted);
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.25s;
+}
+.goal-item.completed .checkbox {
+  border-color: #10b981;
+  background: #10b981;
+  transform: scale(1.1);
+  animation: checkboxPop 0.3s ease;
+}
+@keyframes checkboxPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1.1); }
+}
+.goal-item.completed .checkbox::after {
+  content: '✓';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+}
+.goal-item .goal-text {
+  color: var(--text-primary);
+  font-weight: 400;
+  transition: color 0.25s;
+}
+.goal-item.completed .goal-text {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+/* Footer & Buttons */
+.panel-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(0,0,0,0.02);
+}
+.learn-footer-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+}
+.learn-footer-btn:hover:not(:disabled) {
+  background: var(--btn-hover);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+.learn-footer-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.learn-footer-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.learn-footer-btn.reset {
+  color: var(--text-muted);
+  border-color: var(--border-color);
+  background: transparent;
+}
+.learn-footer-btn.reset:hover {
+  background: rgba(0,0,0,0.04);
+}
+.learn-footer-btn.active-next {
+  background: linear-gradient(135deg, var(--neon-cyan), var(--btn-color));
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+  animation: glowPulse 2s infinite;
+}
+@keyframes glowPulse {
+  0% { box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25); }
+  50% { box-shadow: 0 4px 20px rgba(14, 165, 233, 0.55); }
+  100% { box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25); }
+}
