@@ -785,21 +785,24 @@ function makeButton(x, y) {
 
 	function renderModeBtn() {
 		var active = c.data.is_toggle;
-		var activeColor = Wire.on_color || '#00f5ff';
+		var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+		var strokeColor = active ? '#00f5ff' : (isDark ? '#94a3b8' : '#475569');
+		var trackBg = active ? '#0284c7' : (isDark ? '#1e293b' : '#cbd5e1');
+		var knobColor = active ? '#ffffff' : (isDark ? '#f8fafc' : '#0f172a');
 		
 		mode_btn.graphics.clear();
-		// hit area background for easier clicking
-		mode_btn.graphics.beginFill('rgba(0,0,0,0.01)').drawCircle(0, 0, 10);
+		// Hit box area
+		mode_btn.graphics.beginFill('rgba(0,0,0,0.01)').drawCircle(0, 0, 14);
 		
-		// track
-		mode_btn.graphics.beginFill(active ? 'rgba(0,245,255,0.2)' : '#1a3040')
-			.beginStroke(active ? activeColor : '#64748b')
-			.setStrokeStyle(1)
-			.drawRoundRect(-8, -5, 16, 10, 5);
+		// Outer border & Track fill
+		mode_btn.graphics.setStrokeStyle(1.5).beginStroke(strokeColor);
+		mode_btn.graphics.beginFill(trackBg)
+			.drawRoundRect(-10, -6, 20, 12, 6);
 		
-		// knob
-		mode_btn.graphics.beginFill(active ? activeColor : '#64748b')
-			.drawCircle(active ? 4 : -4, 0, 3.5);
+		// Sliding Knob
+		mode_btn.graphics.beginFill(knobColor)
+			.setStrokeStyle(1).beginStroke(active ? '#00f5ff' : '#64748b')
+			.drawCircle(active ? 4 : -4, 0, 4.5);
 			
 		c.gfx.updateCache();
 	}
@@ -1173,18 +1176,9 @@ var Circuit = (function CircuitFactory() {
 		// chip base (draggable part)
 		this.chip_radius = 40;
 		this.chip = new createjs.Shape();
-		this.chip.graphics.setStrokeStyle(1.5);
-		this.chip.graphics.beginStroke('rgba(0,245,255,0.3)');
-		this.chip.graphics.beginRadialGradientFill(
-			['#1a2540', '#0d1628'],
-			[0, 1],
-			0, 0, 0,
-			0, 0, this.chip_radius
-		);
-		this.chip.graphics.drawCircle(0, 0, this.chip_radius);
-
-		// optional label (also draggable)
-		this.label = null;
+		
+		// Draw custom IEEE / ANSI logic gate shapes
+		drawGateShape(this.chip, type);
 
 		// assemble
 		this.draggable.addChild(this.chip);
@@ -1192,12 +1186,17 @@ var Circuit = (function CircuitFactory() {
 
 		// create label if provided
 		if (label) {
-			this.label = new createjs.Text(label, 'bold 13px "JetBrains Mono", monospace', '#00f5ff');
+			var labelColor = '#00f5ff';
+			if (type === 'xor') labelColor = '#34d399';
+			else if (type === 'not') labelColor = '#f472b6';
+			else if (type === 'nor') labelColor = '#fbbf24';
+
+			this.label = new createjs.Text(label, '900 13px "JetBrains Mono", monospace', labelColor);
 			this.label.textAlign = 'center';
 			var label_rect = this.label.getBounds();
 			this.label.cache(label_rect.x - 2, label_rect.y - 2, label_rect.width + 4, label_rect.height + 4);
-			this.label.x = 0;
-			this.label.y = -8;
+			this.label.x = (type === 'not') ? -6 : ((type === 'and' || type === 'or' || type === 'xor' || type === 'nor') ? -2 : 0);
+			this.label.y = -7;
 			this.draggable.addChild(this.label);
 		}
 
@@ -1654,6 +1653,75 @@ var MyMath = {
 
 
 
+function drawGateShape(shape, type) {
+	var g = shape.graphics;
+	g.clear();
+
+	if (type === 'and') {
+		// AND Gate (D-shape)
+		g.setStrokeStyle(3).beginStroke('rgba(14, 165, 233, 0.4)');
+		g.moveTo(-24, -28).lineTo(0, -28).arc(0, 0, 28, -Math.PI/2, Math.PI/2).lineTo(-24, 28).closePath();
+
+		g.setStrokeStyle(2.5).beginStroke('#0ea5e9');
+		g.beginLinearGradientFill(['#0c2538', '#06131f'], [0, 1], -24, -28, 28, 28);
+		g.moveTo(-24, -28).lineTo(0, -28).arc(0, 0, 28, -Math.PI/2, Math.PI/2).lineTo(-24, 28).closePath();
+	} else if (type === 'or') {
+		// OR Gate (Curved input back + pointed output tip)
+		g.setStrokeStyle(3).beginStroke('rgba(6, 182, 212, 0.4)');
+		g.moveTo(-28, -28).quadraticCurveTo(-14, 0, -28, 28).quadraticCurveTo(2, 28, 30, 0).quadraticCurveTo(2, -28, -28, -28);
+
+		g.setStrokeStyle(2.5).beginStroke('#06b6d4');
+		g.beginLinearGradientFill(['#082e38', '#05161d'], [0, 1], -28, -28, 30, 28);
+		g.moveTo(-28, -28).quadraticCurveTo(-14, 0, -28, 28).quadraticCurveTo(2, 28, 30, 0).quadraticCurveTo(2, -28, -28, -28);
+	} else if (type === 'xor') {
+		// XOR Gate (Extra back curve + OR body)
+		g.setStrokeStyle(2.5).beginStroke('#34d399');
+		g.moveTo(-36, -28).quadraticCurveTo(-22, 0, -36, 28);
+
+		g.setStrokeStyle(3).beginStroke('rgba(52, 211, 153, 0.4)');
+		g.moveTo(-28, -28).quadraticCurveTo(-14, 0, -28, 28).quadraticCurveTo(2, 28, 30, 0).quadraticCurveTo(2, -28, -28, -28);
+
+		g.setStrokeStyle(2.5).beginStroke('#34d399');
+		g.beginLinearGradientFill(['#063022', '#031710'], [0, 1], -28, -28, 30, 28);
+		g.moveTo(-28, -28).quadraticCurveTo(-14, 0, -28, 28).quadraticCurveTo(2, 28, 30, 0).quadraticCurveTo(2, -28, -28, -28);
+	} else if (type === 'not') {
+		// NOT Gate (Triangle + inversion bubble)
+		g.setStrokeStyle(3).beginStroke('rgba(244, 114, 182, 0.4)');
+		g.moveTo(-24, -26).lineTo(14, 0).lineTo(-24, 26).closePath();
+		g.drawCircle(21, 0, 5);
+
+		g.setStrokeStyle(2.5).beginStroke('#f472b6');
+		g.beginLinearGradientFill(['#330c2c', '#180514'], [0, 1], -24, -26, 21, 26);
+		g.moveTo(-24, -26).lineTo(14, 0).lineTo(-24, 26).closePath();
+
+		g.beginFill('#180514').setStrokeStyle(2.5).beginStroke('#f472b6');
+		g.drawCircle(21, 0, 5);
+	} else if (type === 'nor') {
+		// NOR Gate (OR body + inversion bubble)
+		g.setStrokeStyle(3).beginStroke('rgba(251, 191, 36, 0.4)');
+		g.moveTo(-28, -28).quadraticCurveTo(-14, 0, -28, 28).quadraticCurveTo(0, 28, 22, 0).quadraticCurveTo(0, -28, -28, -28);
+		g.drawCircle(28, 0, 5);
+
+		g.setStrokeStyle(2.5).beginStroke('#fbbf24');
+		g.beginLinearGradientFill(['#382405', '#1a1002'], [0, 1], -28, -28, 28, 28);
+		g.moveTo(-28, -28).quadraticCurveTo(-14, 0, -28, 28).quadraticCurveTo(0, 28, 22, 0).quadraticCurveTo(0, -28, -28, -28);
+
+		g.beginFill('#1a1002').setStrokeStyle(2.5).beginStroke('#fbbf24');
+		g.drawCircle(28, 0, 5);
+	} else {
+		// Default circular base with radial fill
+		g.setStrokeStyle(2);
+		g.beginStroke('rgba(0, 245, 255, 0.4)');
+		g.beginRadialGradientFill(
+			['#1a2540', '#0d1628'],
+			[0, 1],
+			0, 0, 0,
+			0, 0, 40
+		);
+		g.drawCircle(0, 0, 40);
+	}
+}
+
 function updateShortcuts() {
 	if (typeof Circuit === 'undefined' || !Circuit.active) return;
 	
@@ -1678,28 +1746,30 @@ function updateShortcuts() {
 		}
 	});
 
-	// Draw new shortcut indicators
+	// Draw new high contrast shortcut indicators
 	buttons.forEach(function(c, index) {
 		if (index < 9) {
 			var key = (index + 1).toString();
 			c.shortcutKey = key;
 			
 			var container = new createjs.Container();
-			container.x = -26;
-			container.y = -26;
+			container.x = -28;
+			container.y = -28;
 			
-			var activeColor = Wire.on_color || '#00f5ff';
+			var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+			var bgFill = isDark ? '#00f5ff' : '#2563eb';
+			var textColor = isDark ? '#080b14' : '#ffffff';
+			
 			var bg = new createjs.Shape();
-			bg.graphics.beginFill(activeColor === '#00f5ff' ? 'rgba(0, 245, 255, 0.15)' : 'rgba(37, 99, 235, 0.1)')
-				.beginStroke(activeColor)
-				.setStrokeStyle(1)
-				.drawRoundRect(0, 0, 14, 14, 3);
+			bg.graphics.setStrokeStyle(1.5).beginStroke(isDark ? '#080b14' : '#ffffff');
+			bg.graphics.beginFill(bgFill)
+				.drawRoundRect(0, 0, 16, 16, 4);
 			
-			var text = new createjs.Text(key, '10px "JetBrains Mono", monospace', activeColor);
+			var text = new createjs.Text(key, 'bold 11px "JetBrains Mono", monospace', textColor);
 			text.textAlign = 'center';
 			text.textBaseline = 'middle';
-			text.x = 7;
-			text.y = 7;
+			text.x = 8;
+			text.y = 8;
 			
 			container.addChild(bg, text);
 			c.draggable.addChild(container);

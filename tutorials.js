@@ -1,6 +1,11 @@
 // Logic Gates Simulator - Tutorials and Lessons module
 // This file runs the conceptual CMOS slides and interactive challenges.
 
+function findCircuitsByType(type) {
+	if (typeof Circuit === 'undefined' || !Circuit.active) return [];
+	return Circuit.active.filter(function(c) { return c.type === type; });
+}
+
 var TUTORIAL_LESSONS = [
 	{
 		title: "1. What is Digital?",
@@ -32,7 +37,7 @@ var TUTORIAL_LESSONS = [
 		type: "theory",
 		content: `
 			<p>Modern computers use <strong>CMOS technology</strong>, which pairs two complementary types of transistors:</p>
-			<div class="theory-box" style="display: flex; flex-direction: column; gap: 8px;">
+			<div class="theory-box" style="display: flex; flex-direction: column; gap: 10px;">
 				<div><strong>⚡ N-Channel MOSFET (NMOS):</strong><br>
 				Acts like a <em>Normally Open</em> switch. It closes (turns <strong>ON</strong>) when the Gate is <span class="badge high">HIGH (1)</span>.</div>
 				<div><strong>❄️ P-Channel MOSFET (PMOS):</strong><br>
@@ -55,7 +60,7 @@ var TUTORIAL_LESSONS = [
 				<div class="schematic-line">↓</div>
 				<div class="schematic-node">💀 <strong>Ground (0V)</strong></div>
 			</div>
-			<p style="font-size: 11px; line-height: 1.4; color: var(--text-muted);">
+			<p style="font-size: 12px; line-height: 1.5; color: var(--text-muted);">
 				If Input is <strong>1</strong>: NMOS turns ON, connecting Output to Ground (0). PMOS is OFF.<br>
 				If Input is <strong>0</strong>: PMOS turns ON, connecting Output to Power (1). NMOS is OFF.
 			</p>
@@ -66,7 +71,7 @@ var TUTORIAL_LESSONS = [
 		type: "theory",
 		content: `
 			<p>To combine multiple inputs, we arrange transistors in series or parallel:</p>
-			<div class="theory-box" style="display: flex; flex-direction: column; gap: 8px;">
+			<div class="theory-box" style="display: flex; flex-direction: column; gap: 10px;">
 				<div><strong>🔒 Series (AND logic):</strong><br>
 				Current must flow through both transistors. Current only flows if <em>both</em> gates are ON.</div>
 				<div><strong>🔓 Parallel (OR logic):</strong><br>
@@ -85,19 +90,24 @@ var TUTORIAL_LESSONS = [
 			{ id: "power", text: "Turn the Button ON" }
 		],
 		check: function() {
-			var button = Circuit.findById(0);
-			var light = Circuit.findById(1);
-			if (!button || !light) return { connect: false, power: false };
-
+			var buttons = findCircuitsByType('button');
+			var lights = findCircuitsByType('light');
 			var connected = false;
-			if (light.inputs[0] && light.inputs[0].wires.length > 0) {
-				var wire = light.inputs[0].wires[0];
-				if (wire.output && wire.output.circuit && wire.output.circuit.id === 0) {
-					connected = true;
-				}
-			}
+			var powered = false;
 
-			var powered = connected && light.has_power;
+			lights.forEach(function(light) {
+				if (light.inputs[0] && light.inputs[0].wires.length > 0) {
+					light.inputs[0].wires.forEach(function(wire) {
+						if (wire.output && wire.output.circuit && wire.output.circuit.type === 'button') {
+							connected = true;
+							if (light.has_power) {
+								powered = true;
+							}
+						}
+					});
+				}
+			});
+
 			return { connect: connected, power: powered };
 		}
 	},
@@ -112,35 +122,34 @@ var TUTORIAL_LESSONS = [
 			{ id: "test_on", text: "See Light OFF when Button is ON" }
 		],
 		check: function(state) {
-			if (!state.visited) {
-				state.visited = { off: false, on: false };
-			}
-			var btn = Circuit.findById(0);
-			var notGate = Circuit.findById(1);
-			var light = Circuit.findById(2);
-			if (!btn || !notGate || !light) return { connect: false, test_off: false, test_on: false };
+			if (!state.visited) state.visited = { off: false, on: false };
 
-			var c1 = false;
-			if (notGate.inputs[0] && notGate.inputs[0].wires.length > 0) {
-				if (notGate.inputs[0].wires[0].output.circuit.id === 0) {
-					c1 = true;
-				}
-			}
-			var c2 = false;
-			if (light.inputs[0] && light.inputs[0].wires.length > 0) {
-				if (light.inputs[0].wires[0].output.circuit.id === 1) {
-					c2 = true;
-				}
-			}
-			var connected = c1 && c2;
+			var notGates = findCircuitsByType('not');
+			var lights = findCircuitsByType('light');
 
-			if (connected) {
-				if (!btn.has_power && light.has_power) state.visited.off = true;
-				if (btn.has_power && !light.has_power) state.visited.on = true;
-			} else {
-				state.visited.off = false;
-				state.visited.on = false;
-			}
+			var connected = false;
+
+			notGates.forEach(function(notGate) {
+				var btnConnected = false;
+				var sourceBtn = null;
+				if (notGate.inputs[0] && notGate.inputs[0].wires.length > 0) {
+					if (notGate.inputs[0].wires[0].output && notGate.inputs[0].wires[0].output.circuit.type === 'button') {
+						btnConnected = true;
+						sourceBtn = notGate.inputs[0].wires[0].output.circuit;
+					}
+				}
+				if (btnConnected && sourceBtn) {
+					lights.forEach(function(light) {
+						if (light.inputs[0] && light.inputs[0].wires.length > 0) {
+							if (light.inputs[0].wires[0].output && light.inputs[0].wires[0].output.circuit === notGate) {
+								connected = true;
+								if (!sourceBtn.has_power && light.has_power) state.visited.off = true;
+								if (sourceBtn.has_power && !light.has_power) state.visited.on = true;
+							}
+						}
+					});
+				}
+			});
 
 			return {
 				connect: connected,
@@ -160,31 +169,39 @@ var TUTORIAL_LESSONS = [
 			{ id: "power", text: "Turn the Light ON (both inputs ON)" }
 		],
 		check: function() {
-			var btn1 = Circuit.findById(0);
-			var btn2 = Circuit.findById(1);
-			var andGate = Circuit.findById(2);
-			var light = Circuit.findById(3);
-			if (!btn1 || !btn2 || !andGate || !light) return { connect: false, toggle_mode: false, power: false };
+			var andGates = findCircuitsByType('and');
+			var lights = findCircuitsByType('light');
 
-			var c1 = false;
-			if (andGate.inputs[0] && andGate.inputs[0].wires.length > 0) {
-				var src = andGate.inputs[0].wires[0].output.circuit.id;
-				if (src === 0 || src === 1) c1 = true;
-			}
-			var c2 = false;
-			if (andGate.inputs[1] && andGate.inputs[1].wires.length > 0) {
-				var src = andGate.inputs[1].wires[0].output.circuit.id;
-				if (src === 0 || src === 1) c2 = true;
-			}
-			var c3 = false;
-			if (light.inputs[0] && light.inputs[0].wires.length > 0) {
-				if (light.inputs[0].wires[0].output.circuit.id === 2) c3 = true;
-			}
-			var connected = c1 && c2 && c3 && (andGate.inputs[0].wires[0].output.circuit.id !== andGate.inputs[1].wires[0].output.circuit.id);
+			var connected = false;
+			var toggled = false;
+			var powered = false;
 
-			var toggled = btn1.data.is_toggle && btn2.data.is_toggle;
+			andGates.forEach(function(andGate) {
+				var inputBtns = [];
+				andGate.inputs.forEach(function(inp) {
+					if (inp.wires.length > 0 && inp.wires[0].output && inp.wires[0].output.circuit.type === 'button') {
+						inputBtns.push(inp.wires[0].output.circuit);
+					}
+				});
 
-			var powered = connected && light.has_power;
+				if (inputBtns.length >= 2 && inputBtns[0] !== inputBtns[1]) {
+					var hasLight = false;
+					lights.forEach(function(light) {
+						if (light.inputs[0] && light.inputs[0].wires.length > 0) {
+							if (light.inputs[0].wires[0].output && light.inputs[0].wires[0].output.circuit === andGate) {
+								hasLight = true;
+								if (light.has_power) powered = true;
+							}
+						}
+					});
+					if (hasLight) {
+						connected = true;
+						if (inputBtns[0].data.is_toggle && inputBtns[1].data.is_toggle) {
+							toggled = true;
+						}
+					}
+				}
+			});
 
 			return {
 				connect: connected,
@@ -203,29 +220,35 @@ var TUTORIAL_LESSONS = [
 			{ id: "test_single", text: "Turn Light ON with ONLY ONE button active" }
 		],
 		check: function() {
-			var btn1 = Circuit.findById(0);
-			var btn2 = Circuit.findById(1);
-			var orGate = Circuit.findById(2);
-			var light = Circuit.findById(3);
-			if (!btn1 || !btn2 || !orGate || !light) return { connect: false, test_single: false };
+			var orGates = findCircuitsByType('or');
+			var lights = findCircuitsByType('light');
 
-			var c1 = false;
-			if (orGate.inputs[0] && orGate.inputs[0].wires.length > 0) {
-				var src = orGate.inputs[0].wires[0].output.circuit.id;
-				if (src === 0 || src === 1) c1 = true;
-			}
-			var c2 = false;
-			if (orGate.inputs[1] && orGate.inputs[1].wires.length > 0) {
-				var src = orGate.inputs[1].wires[0].output.circuit.id;
-				if (src === 0 || src === 1) c2 = true;
-			}
-			var c3 = false;
-			if (light.inputs[0] && light.inputs[0].wires.length > 0) {
-				if (light.inputs[0].wires[0].output.circuit.id === 2) c3 = true;
-			}
-			var connected = c1 && c2 && c3 && (orGate.inputs[0].wires[0].output.circuit.id !== orGate.inputs[1].wires[0].output.circuit.id);
+			var connected = false;
+			var singleActive = false;
 
-			var singleActive = connected && light.has_power && ((btn1.has_power && !btn2.has_power) || (!btn1.has_power && btn2.has_power));
+			orGates.forEach(function(orGate) {
+				var inputBtns = [];
+				orGate.inputs.forEach(function(inp) {
+					if (inp.wires.length > 0 && inp.wires[0].output && inp.wires[0].output.circuit.type === 'button') {
+						inputBtns.push(inp.wires[0].output.circuit);
+					}
+				});
+
+				if (inputBtns.length >= 2 && inputBtns[0] !== inputBtns[1]) {
+					var hasLight = false;
+					lights.forEach(function(light) {
+						if (light.inputs[0] && light.inputs[0].wires.length > 0) {
+							if (light.inputs[0].wires[0].output && light.inputs[0].wires[0].output.circuit === orGate) {
+								hasLight = true;
+								if (light.has_power && ((inputBtns[0].has_power && !inputBtns[1].has_power) || (!inputBtns[0].has_power && inputBtns[1].has_power))) {
+									singleActive = true;
+								}
+							}
+						}
+					});
+					if (hasLight) connected = true;
+				}
+			});
 
 			return {
 				connect: connected,
@@ -244,38 +267,39 @@ var TUTORIAL_LESSONS = [
 			{ id: "test_same", text: "Light is OFF when both inputs are ON" }
 		],
 		check: function(state) {
-			if (!state.visited) {
-				state.visited = { diff: false, same: false };
-			}
-			var btn1 = Circuit.findById(0);
-			var btn2 = Circuit.findById(1);
-			var xorGate = Circuit.findById(2);
-			var light = Circuit.findById(3);
-			if (!btn1 || !btn2 || !xorGate || !light) return { connect: false, test_diff: false, test_same: false };
+			if (!state.visited) state.visited = { diff: false, same: false };
 
-			var c1 = false;
-			if (xorGate.inputs[0] && xorGate.inputs[0].wires.length > 0) {
-				var src = xorGate.inputs[0].wires[0].output.circuit.id;
-				if (src === 0 || src === 1) c1 = true;
-			}
-			var c2 = false;
-			if (xorGate.inputs[1] && xorGate.inputs[1].wires.length > 0) {
-				var src = xorGate.inputs[1].wires[0].output.circuit.id;
-				if (src === 0 || src === 1) c2 = true;
-			}
-			var c3 = false;
-			if (light.inputs[0] && light.inputs[0].wires.length > 0) {
-				if (light.inputs[0].wires[0].output.circuit.id === 2) c3 = true;
-			}
-			var connected = c1 && c2 && c3 && (xorGate.inputs[0].wires[0].output.circuit.id !== xorGate.inputs[1].wires[0].output.circuit.id);
+			var xorGates = findCircuitsByType('xor');
+			var lights = findCircuitsByType('light');
 
-			if (connected) {
-				if (light.has_power && (btn1.has_power !== btn2.has_power)) state.visited.diff = true;
-				if (!light.has_power && btn1.has_power && btn2.has_power) state.visited.same = true;
-			} else {
-				state.visited.diff = false;
-				state.visited.same = false;
-			}
+			var connected = false;
+
+			xorGates.forEach(function(xorGate) {
+				var inputBtns = [];
+				xorGate.inputs.forEach(function(inp) {
+					if (inp.wires.length > 0 && inp.wires[0].output && inp.wires[0].output.circuit.type === 'button') {
+						inputBtns.push(inp.wires[0].output.circuit);
+					}
+				});
+
+				if (inputBtns.length >= 2 && inputBtns[0] !== inputBtns[1]) {
+					var hasLight = false;
+					lights.forEach(function(light) {
+						if (light.inputs[0] && light.inputs[0].wires.length > 0) {
+							if (light.inputs[0].wires[0].output && light.inputs[0].wires[0].output.circuit === xorGate) {
+								hasLight = true;
+								if (light.has_power && (inputBtns[0].has_power !== inputBtns[1].has_power)) {
+									state.visited.diff = true;
+								}
+								if (!light.has_power && inputBtns[0].has_power && inputBtns[1].has_power) {
+									state.visited.same = true;
+								}
+							}
+						}
+					});
+					if (hasLight) connected = true;
+				}
+			});
 
 			return {
 				connect: connected,
@@ -294,13 +318,15 @@ var TUTORIAL_LESSONS = [
 			{ id: "test_reset", text: "Reset state: pulse RESET (2) ON then OFF" }
 		],
 		check: function(state) {
-			if (!state.visited) {
-				state.visited = { set: false, reset: false };
-			}
-			var setBtn = Circuit.findById(0);
-			var resetBtn = Circuit.findById(1);
-			var qLight = Circuit.findById(4);
-			if (!setBtn || !resetBtn || !qLight) return { test_set: false, test_reset: false };
+			if (!state.visited) state.visited = { set: false, reset: false };
+
+			var buttons = findCircuitsByType('button');
+			var lights = findCircuitsByType('light');
+			if (buttons.length < 2 || lights.length < 1) return { test_set: false, test_reset: false };
+
+			var setBtn = buttons[0];
+			var resetBtn = buttons[1];
+			var qLight = lights[0];
 
 			if (!setBtn.has_power && qLight.has_power) {
 				state.visited.set = true;
@@ -318,7 +344,7 @@ var TUTORIAL_LESSONS = [
 ];
 
 var currentLessonIdx = 0;
-var lessonState = {}; // holds temporary state (like visited flags) for the current active lesson
+var lessonState = {}; // holds temporary state for current active lesson
 var checkerInterval = null;
 var learnBtn = null;
 var learnPanel = null;
@@ -362,7 +388,7 @@ function initTutorials() {
 
 	function openPanel() {
 		isOpen = true;
-		learnPanel.style.display = 'block';
+		learnPanel.style.display = 'flex';
 		learnPanel.offsetHeight; // Force reflow
 		learnPanel.classList.add('panel-open');
 		
@@ -412,9 +438,9 @@ function initTutorials() {
 	});
 
 	nextBtn.addEventListener('click', function() {
-		if (nextBtn.classList.contains('active-next') && currentLessonIdx < TUTORIAL_LESSONS.length - 1) {
+		if (currentLessonIdx < TUTORIAL_LESSONS.length - 1) {
 			loadLesson(currentLessonIdx + 1);
-		} else if (nextBtn.classList.contains('active-next') && currentLessonIdx === TUTORIAL_LESSONS.length - 1) {
+		} else {
 			// Finished all!
 			alert("⚡ Congratulations! You completed all the logic gate tutorials!");
 			closePanel();
@@ -437,13 +463,14 @@ function loadLesson(idx) {
 	var percent = ((idx + 1) / TUTORIAL_LESSONS.length) * 100;
 	learnProgress.style.width = percent + '%';
 
-	// Reset next button
-	nextBtn.classList.remove('active-next');
-	nextBtn.disabled = true;
+	// Next button is always enabled for skipping!
+	nextBtn.disabled = false;
 	if (idx === TUTORIAL_LESSONS.length - 1) {
 		nextBtn.textContent = "Finish 🏆";
+		nextBtn.classList.add('active-next');
 	} else {
 		nextBtn.textContent = "Next ➔";
+		nextBtn.classList.remove('active-next');
 	}
 
 	if (lesson.type === 'theory') {
@@ -454,10 +481,7 @@ function loadLesson(idx) {
 				${lesson.content}
 			</div>
 		`;
-		
-		// Theory slides are unlocked by default
 		nextBtn.classList.add('active-next');
-		nextBtn.disabled = false;
 	} else {
 		// Render Lab Slide
 		resetBtn.style.display = 'inline-block';
@@ -525,7 +549,6 @@ function startChecker() {
 
 		if (allDone && !nextBtn.classList.contains('active-next')) {
 			nextBtn.classList.add('active-next');
-			nextBtn.disabled = false;
 			
 			// Play success particles burst in the center of the screen
 			triggerSuccessParticles();
@@ -562,7 +585,7 @@ function triggerSuccessParticles() {
 function initKeyboardShortcuts() {
 	window.addEventListener('keydown', function(e) {
 		// Ignore keys if user is typing in form inputs
-		if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+		if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT')) {
 			return;
 		}
 
