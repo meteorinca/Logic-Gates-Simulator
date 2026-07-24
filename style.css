@@ -147,6 +147,9 @@ body::after {
 #examplesBtn,
 #themeBtn,
 #playPauseBtn,
+#undoBtn,
+#redoBtn,
+#learnBtn,
 #zoomInBtn,
 #zoomResetBtn,
 #zoomOutBtn {
@@ -170,6 +173,7 @@ body::after {
 #addBtn:hover, #addDropdown > div:hover,
 #importBtn:hover, #exportBtn:hover,
 #examplesBtn:hover, #themeBtn:hover, #playPauseBtn:hover,
+#undoBtn:hover, #redoBtn:hover, #learnBtn:hover,
 #zoomInBtn:hover, #zoomResetBtn:hover, #zoomOutBtn:hover {
   background: var(--btn-hover);
   border-color: var(--border-hover);
@@ -179,20 +183,26 @@ body::after {
 #addBtn:active, #addDropdown > div:active,
 #importBtn:active, #exportBtn:active,
 #examplesBtn:active, #themeBtn:active, #playPauseBtn:active,
+#undoBtn:active, #redoBtn:active, #learnBtn:active,
 #zoomInBtn:active, #zoomResetBtn:active, #zoomOutBtn:active {
   transform: translateY(0) scale(0.97);
 }
 
-/* ─── Zoom Controls (Center-Right) ──────────────── */
+/* ─── Zoom Controls (Bottom-Right Stack) ──────────────── */
 #zoomControls {
   position: absolute;
   right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: 78px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   z-index: 10;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.add-menu-open #zoomControls {
+  opacity: 0.15;
+  pointer-events: none;
+  transform: translateY(6px);
 }
 
 /* ─── Add Button ────────────────────────────────── */
@@ -210,13 +220,15 @@ body::after {
   position: absolute;
   top: 76px; right: 16px;
   z-index: 10;
+  grid-template-columns: repeat(2, 52px);
+  gap: 10px;
 }
 #addDropdown > div {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
   font-family: 'JetBrains Mono', monospace;
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 /* ─── Import / Export Buttons ───────────────────── */
@@ -271,6 +283,89 @@ body::after {
   right: 16px; bottom: 16px;
   font-size: 20px;
   z-index: 10;
+}
+
+/* ─── Undo / Redo Buttons ────────────────────────── */
+#undoBtn {
+  position: absolute;
+  right: 202px; bottom: 16px;
+  z-index: 10;
+}
+#redoBtn {
+  position: absolute;
+  right: 140px; bottom: 16px;
+  z-index: 10;
+}
+
+/* Disabled state for undo/redo when stack is empty */
+.btn-disabled {
+  opacity: 0.3 !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+
+/* ─── Floating Selection Bar ─────────────────────── */
+#selectionBar {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  display: none;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-glass-solid);
+  border: 1px solid var(--border-color);
+  border-radius: 40px;
+  padding: 6px 10px;
+  box-shadow: 0 0 20px var(--btn-shadow), 0 8px 30px rgba(0,0,0,0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 25;
+  animation: selBarIn 0.2s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+#selectionBar.visible {
+  display: flex;
+  transform: translateX(-50%) translateY(0);
+}
+@keyframes selBarIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-12px) scale(0.92); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.sel-action-btn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--btn-text);
+  cursor: pointer;
+  transition: background 0.18s, transform 0.12s, color 0.18s;
+  outline: none;
+  font-size: 18px;
+}
+.sel-action-btn .material-icons { font-size: 18px; }
+.sel-action-btn:hover {
+  background: var(--btn-hover);
+  transform: scale(1.1);
+}
+.sel-action-btn:active {
+  transform: scale(0.95);
+}
+.sel-action-btn.sel-danger {
+  color: var(--delete-color);
+}
+.sel-action-btn.sel-danger:hover {
+  background: rgba(239,68,68,0.12);
+}
+.sel-bar-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border-color);
+  margin: 0 2px;
 }
 
 /* ─── Play/Pause Button ─────────────────────────── */

@@ -116,6 +116,31 @@ document.addEventListener('DOMContentLoaded', function() {
 		}
 	});
 
+	// ── Undo / Redo buttons ───────────────────────────
+	var undoBtn = document.getElementById('undoBtn');
+	var redoBtn = document.getElementById('redoBtn');
+
+	undoBtn.addEventListener('click', function() {
+		if (window.app && window.app.undo) window.app.undo();
+	});
+	redoBtn.addEventListener('click', function() {
+		if (window.app && window.app.redo) window.app.redo();
+	});
+
+	// ── Selection bar actions ─────────────────────────
+	document.getElementById('selCopyBtn').addEventListener('click', function() {
+		if (window.app && window.app.copySelection) window.app.copySelection();
+	});
+	document.getElementById('selCutBtn').addEventListener('click', function() {
+		if (window.app && window.app.cutSelection) window.app.cutSelection();
+	});
+	document.getElementById('selPasteBtn').addEventListener('click', function() {
+		if (window.app && window.app.pasteClipboard) window.app.pasteClipboard();
+	});
+	document.getElementById('selDeleteBtn').addEventListener('click', function() {
+		if (window.app && window.app.deleteSelection) window.app.deleteSelection();
+	});
+
 	// ── Zoom controls ─────────────────────────────────
 	var zoomInBtn    = document.getElementById('zoomInBtn');
 	var zoomOutBtn   = document.getElementById('zoomOutBtn');
@@ -537,12 +562,19 @@ function AppFactory(Circuit, Wire) {
 		addMenuBtn('MEM', makeMemory);
 		addMenuBtn('TCK', makeTicker);
 		addMenuBtn('DLY', makeDelay);
+		addMenuBtn('TXT', makeTextLabel);
 
 		// create gsap animation to open/close menu
 		var menu_tl = new TimelineMax({
 			paused: true,
-			onStart: function() { Menu.add_dropdown.style.display = 'block'; },
-			onReverseComplete: function() { Menu.add_dropdown.style.display = 'none'; }
+			onStart: function() {
+				Menu.add_dropdown.style.display = 'grid';
+				document.getElementById('appWrap').classList.add('add-menu-open');
+			},
+			onReverseComplete: function() {
+				Menu.add_dropdown.style.display = 'none';
+				document.getElementById('appWrap').classList.remove('add-menu-open');
+			}
 		});
 
 		menu_tl.staggerFromTo(btns, 0.25, {
@@ -562,8 +594,12 @@ function AppFactory(Circuit, Wire) {
 			rotation: 225
 		}, 0);
 
-		// menu_tl.timeScale(0.2);
-
+		// close menu on click outside
+		document.addEventListener('click', function(e) {
+			if (Menu.is_open && !Menu.add_dropdown.contains(e.target) && !Menu.add_btn.contains(e.target)) {
+				Menu.hide();
+			}
+		});
 
 		return Menu;
 	})();
@@ -587,6 +623,266 @@ function AppFactory(Circuit, Wire) {
 	App.wires = new createjs.Container();
 	App.stage.addChild(App.wires);
 	App.stage.addChild(App.circuits);
+
+	// ── Selection overlay container ────────────────────
+	App.selectionLayer = new createjs.Container();
+	App.stage.addChild(App.selectionLayer);
+
+	// ── Selection state ───────────────────────────────
+	App.selection = [];
+
+	// Rubber-band rectangle shape
+	var selRect = new createjs.Shape();
+	App.selectionLayer.addChild(selRect);
+
+	App._selectionBarEl   = document.getElementById('selectionBar');
+	App._selPasteBtnEl    = document.getElementById('selPasteBtn');
+
+	App._updateSelectionBar = function() {
+		var hasSelection = App.selection.length > 0;
+		if (hasSelection) {
+			App._selectionBarEl.classList.add('visible');
+		} else {
+			App._selectionBarEl.classList.remove('visible');
+		}
+		// Show paste button when clipboard has data (regardless of selection)
+		if (App._selPasteBtnEl) {
+			App._selPasteBtnEl.style.display = App.clipboard ? '' : 'none';
+		}
+	};
+
+	// Draw glowing selection outlines around selected circuits
+	App._renderSelectionHighlights = function() {
+		App.selectionLayer.removeAllChildren();
+		App.selectionLayer.addChild(selRect); // keep rubber-band rect
+		for (var i = 0; i < App.selection.length; i++) {
+			var c = App.selection[i];
+			var r = c.chip_radius || 40;
+			var hl = new createjs.Shape();
+			// Position the highlight to match the circuit's global position
+			var pt = new createjs.Point();
+			App.circuits.localToGlobal(c.gfx.x, c.gfx.y, pt);
+			hl.x = pt.x;
+			hl.y = pt.y;
+			hl.graphics.setStrokeStyle(2).beginStroke('rgba(99,220,255,0.85)');
+			hl.graphics.drawCircle(0, 0, r + 8);
+			App.selectionLayer.addChild(hl);
+		}
+		App.needs_update = true;
+	};
+
+	App.selectCircuit = function(c, addToSel) {
+		var idx = App.selection.indexOf(c);
+		if (addToSel) {
+			if (idx === -1) App.selection.push(c);
+			else App.selection.splice(idx, 1); // toggle off
+		} else {
+			App.selection = [c];
+		}
+		App._renderSelectionHighlights();
+		App._updateSelectionBar();
+	};
+
+	App.clearSelection = function() {
+		App.selection = [];
+		App._renderSelectionHighlights();
+		App._updateSelectionBar();
+	};
+
+	// ── Undo / Redo stack ─────────────────────────────
+	App.undoStack = [];
+	App.redoStack = [];
+	App.clipboard = null;
+	var MAX_UNDO = 50;
+
+	var _undoBtnEl = document.getElementById('undoBtn');
+	var _redoBtnEl = document.getElementById('redoBtn');
+
+	App._syncUndoButtons = function() {
+		if (App.undoStack.length > 0) {
+			_undoBtnEl.classList.remove('btn-disabled');
+		} else {
+			_undoBtnEl.classList.add('btn-disabled');
+		}
+		if (App.redoStack.length > 0) {
+			_redoBtnEl.classList.remove('btn-disabled');
+		} else {
+			_redoBtnEl.classList.add('btn-disabled');
+		}
+	};
+
+	App.pushUndo = function() {
+		var snapshot = saveProject();
+		App.undoStack.push(snapshot);
+		if (App.undoStack.length > MAX_UNDO) App.undoStack.shift();
+		App.redoStack = [];
+		App._syncUndoButtons();
+	};
+
+	App.undo = function() {
+		if (!App.undoStack.length) return;
+		var current = saveProject();
+		App.redoStack.push(current);
+		var snapshot = App.undoStack.pop();
+		App.clearSelection();
+		loadProject(snapshot);
+		App._syncUndoButtons();
+	};
+
+	App.redo = function() {
+		if (!App.redoStack.length) return;
+		var current = saveProject();
+		App.undoStack.push(current);
+		var snapshot = App.redoStack.pop();
+		App.clearSelection();
+		loadProject(snapshot);
+		App._syncUndoButtons();
+	};
+
+	// ── Copy / Cut / Paste / Delete selection ─────────
+	App.copySelection = function() {
+		if (!App.selection.length) return;
+		App.clipboard = _serializeSelection(App.selection);
+		App._updateSelectionBar();
+		showToast('Copied ' + App.selection.length + ' item(s)');
+	};
+
+	App.cutSelection = function() {
+		if (!App.selection.length) return;
+		App.pushUndo();
+		App.clipboard = _serializeSelection(App.selection);
+		// remove selected circuits
+		var toRemove = App.selection.slice();
+		App.clearSelection();
+		for (var i = 0; i < toRemove.length; i++) {
+			toRemove[i].remove();
+		}
+		App._updateSelectionBar();
+		showToast('Cut ' + toRemove.length + ' item(s)');
+	};
+
+	App.pasteClipboard = function() {
+		if (!App.clipboard) return;
+		App.pushUndo();
+		var pasted = _deserializeSelection(App.clipboard, 50, 50);
+		App.clearSelection();
+		App.selection = pasted;
+		App._renderSelectionHighlights();
+		App._updateSelectionBar();
+		showToast('Pasted ' + pasted.length + ' item(s)');
+	};
+
+	App.deleteSelection = function() {
+		if (!App.selection.length) return;
+		App.pushUndo();
+		var toRemove = App.selection.slice();
+		App.clearSelection();
+		for (var i = 0; i < toRemove.length; i++) {
+			toRemove[i].remove();
+		}
+	};
+
+	// Serialize a subset of circuits to JSON (only internal wires included)
+	function _serializeSelection(circuits) {
+		var ids = {};
+		for (var i = 0; i < circuits.length; i++) ids[circuits[i].id] = true;
+
+		// compute bounding center
+		var cx = 0, cy = 0;
+		for (var i = 0; i < circuits.length; i++) {
+			cx += circuits[i].gfx.x;
+			cy += circuits[i].gfx.y;
+		}
+		cx /= circuits.length;
+		cy /= circuits.length;
+
+		var json = { center: { x: cx, y: cy }, circuits: [] };
+		for (var i = 0; i < circuits.length; i++) {
+			var c = circuits[i];
+			var cj = {
+				type: c.type,
+				id: c.id,
+				x: c.gfx.x | 0,
+				y: c.gfx.y | 0
+			};
+			if (c.delay > 1) cj.delay = c.delay;
+			if (Object.keys(c.data).length) cj.data = JSON.parse(JSON.stringify(c.data));
+
+			// Only include wires that connect to another selected circuit
+			var hasWires = false;
+			var outConns = [];
+			for (var n = 0; n < c.outputs.length; n++) {
+				var wires = [];
+				for (var j = 0; j < c.outputs[n].wires.length; j++) {
+					var w = c.outputs[n].wires[j];
+					if (w.input && ids[w.input.circuit.id]) {
+						wires.push({ input_circuit_id: w.input.circuit.id, input_index: w.input.index });
+						hasWires = true;
+					}
+				}
+				outConns.push({ wires: wires });
+			}
+			if (hasWires) cj.output_connections = outConns;
+			json.circuits.push(cj);
+		}
+		return JSON.stringify(json);
+	}
+
+	// Deserialize clipboard JSON and create new circuits offset by (dx,dy)
+	function _deserializeSelection(jsonStr, dx, dy) {
+		var data;
+		try { data = JSON.parse(jsonStr); } catch(e) { return []; }
+
+		// Compute center of viewport in local space
+		var vx = (window.innerWidth / 2) / App.scale;
+		var vy = (window.innerHeight / 2) / App.scale;
+		var localCenter = new createjs.Point();
+		App.circuits.globalToLocal(vx, vy, localCenter);
+
+		// Offset: place cluster centered in viewport + slight nudge
+		var offX = (localCenter.x - (data.center ? data.center.x : 0)) + dx;
+		var offY = (localCenter.y - (data.center ? data.center.y : 0)) + dy;
+
+		// Build id remap (old id -> new circuit)
+		var idRemap = {};
+		var newCircuits = [];
+
+		for (var i = 0; i < data.circuits.length; i++) {
+			var cd = data.circuits[i];
+			var d = cd.data || {};
+			d.delay = cd.delay || 1;
+			var nc = makeType(cd.type, (cd.x + offX) | 0, (cd.y + offY) | 0, d);
+			idRemap[cd.id] = nc;
+			newCircuits.push(nc);
+		}
+
+		// Wire them up
+		for (var i = 0; i < data.circuits.length; i++) {
+			var cd = data.circuits[i];
+			if (!cd.output_connections) continue;
+			var src = idRemap[cd.id];
+			if (!src) continue;
+			for (var n = 0; n < cd.output_connections.length; n++) {
+				var oc = cd.output_connections[n];
+				if (!oc.wires || !oc.wires.length) continue;
+				for (var j = 0; j < oc.wires.length; j++) {
+					var wdata = oc.wires[j];
+					var dst = idRemap[wdata.input_circuit_id];
+					if (!dst) continue;
+					var outConn = src.outputs[n];
+					var inConn  = dst.inputs[wdata.input_index];
+					if (!outConn || !inConn) continue;
+					inConn.recycleWires();
+					var wire = Wire.new(outConn, inConn);
+					outConn.wires.push(wire);
+					inConn.wires.push(wire);
+					App.wires.addChild(wire.gfx);
+					wire.powerChange(src.has_power);
+				}
+			}
+		}
+		return newCircuits;
+	}
 
 
 	// active wire drawing
@@ -647,21 +943,44 @@ function AppFactory(Circuit, Wire) {
 			App.wires.addChild(wire.gfx);
 
 			wire.powerChange(this.circuit.has_power);
+			// push undo after a wire is created
+			if (typeof App.pushUndo === 'function') App.pushUndo();
 		}
 	};
 
 
-	// allow dragging stage
+	// allow dragging stage (or rubber-band selecting when shift held)
 	var dragging_stage = false;
+	var rubber_band = false;
+	var rb_startX = 0, rb_startY = 0;
 	var stage_offset = new createjs.Point();
 	App.stage.on('stagemousedown', function(evt) {
 		if (!evt.relatedTarget) {
-			dragging_stage = true;
-			App.wires.globalToLocal(evt.rawX, evt.rawY, stage_offset);
+			if (evt.nativeEvent && evt.nativeEvent.shiftKey) {
+				// begin rubber-band
+				rubber_band = true;
+				rb_startX = evt.rawX;
+				rb_startY = evt.rawY;
+			} else {
+				dragging_stage = true;
+				App.clearSelection();
+				App.wires.globalToLocal(evt.rawX, evt.rawY, stage_offset);
+			}
 		}
 	});
 
 	App.stage.on('stagemousemove', function(evt) {
+		if (rubber_band) {
+			App.needs_update = true;
+			var x1 = Math.min(rb_startX, evt.rawX) / App.scale;
+			var y1 = Math.min(rb_startY, evt.rawY) / App.scale;
+			var w = Math.abs(evt.rawX - rb_startX) / App.scale;
+			var h = Math.abs(evt.rawY - rb_startY) / App.scale;
+			selRect.graphics.clear();
+			selRect.graphics.setStrokeStyle(1.5).beginStroke('rgba(99,220,255,0.8)');
+			selRect.graphics.beginFill('rgba(99,220,255,0.08)');
+			selRect.graphics.drawRect(x1, y1, w, h);
+		}
 		if (dragging_stage) {
 			App.needs_update = true;
 
@@ -675,8 +994,32 @@ function AppFactory(Circuit, Wire) {
 	});
 
 	App.stage.on('stagemouseup', function(evt) {
+		if (rubber_band) {
+			rubber_band = false;
+			selRect.graphics.clear();
+			// find all circuits within the rubber-band rect
+			var x1s = Math.min(rb_startX, evt.rawX) / App.scale;
+			var y1s = Math.min(rb_startY, evt.rawY) / App.scale;
+			var x2s = Math.max(rb_startX, evt.rawX) / App.scale;
+			var y2s = Math.max(rb_startY, evt.rawY) / App.scale;
+			App.selection = [];
+			for (var i = 0; i < Circuit.active.length; i++) {
+				var c = Circuit.active[i];
+				var gp = new createjs.Point();
+				App.circuits.localToGlobal(c.gfx.x, c.gfx.y, gp);
+				var gx = gp.x / App.scale;
+				var gy = gp.y / App.scale;
+				if (gx >= x1s && gx <= x2s && gy >= y1s && gy <= y2s) {
+					App.selection.push(c);
+				}
+			}
+			App._renderSelectionHighlights();
+			App._updateSelectionBar();
+			App.needs_update = true;
+		}
 		if (dragging_stage) dragging_stage = false;
 	});
+
 	
 	
 	// handle resizing
@@ -705,7 +1048,9 @@ function AppFactory(Circuit, Wire) {
 				makeLight(centerX + 100, centerY);
 			}
 		}
-	}, 100);
+		// Mark app as ready so undo tracking begins (not during initial load)
+		App._undoReady = true;
+	}, 200);
 
 
 	return App;
@@ -762,6 +1107,10 @@ function makeType(type, x, y, other_info) {
 			c = makeDelay(x, y, other_info.delay);
 			break;
 
+		case 'textlabel':
+			c = makeTextLabel(x, y, (other_info && other_info.text) ? other_info.text : 'Text');
+			break;
+
 		default:
 			throw new Error('makeType: "' + type + '" is not a valid type');
 			break;
@@ -769,7 +1118,6 @@ function makeType(type, x, y, other_info) {
 
 	return c;
 }
-
 
 function makeButton(x, y) {
 	var c = new Circuit('button', 0, 1);
@@ -1212,6 +1560,48 @@ function makeDelay(x, y, delay) {
 }
 
 
+function makeTextLabel(x, y, initialText) {
+	var c = new Circuit('textlabel', 0, 0);
+	var text = initialText || 'Label';
+	c.data.text = text;
+	c.chip_radius = 30;
+
+	// No gate shape — override chip with invisible hit area
+	c.chip.graphics.clear();
+	c.chip.graphics.beginFill('rgba(0,0,0,0.01)');
+	c.chip.graphics.drawRoundRect(-60, -18, 120, 36, 6);
+
+	// Text display
+	var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+	var textColor = isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)';
+	var textGfx = new createjs.Text(text, '500 15px "Inter", sans-serif', textColor);
+	textGfx.textAlign = 'center';
+	textGfx.textBaseline = 'middle';
+	c.draggable.addChild(textGfx);
+
+	// Background pill
+	var bg = new createjs.Shape();
+	bg.graphics.setStrokeStyle(1).beginStroke(isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)');
+	bg.graphics.beginFill(isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)');
+	bg.graphics.drawRoundRect(-62, -20, 124, 40, 8);
+	c.draggable.addChildAt(bg, 0);
+
+	// Double-click to edit
+	c.draggable.on('dblclick', function() {
+		var newText = window.prompt('Edit label text:', c.data.text);
+		if (newText !== null) {
+			if (app && typeof app.pushUndo === 'function') app.pushUndo();
+			c.data.text = newText || 'Label';
+			textGfx.text = c.data.text;
+			app.needs_update = true;
+		}
+	});
+
+	c.add(x, y);
+	return c;
+}
+
+
 // basic circuit
 var Circuit = (function CircuitFactory() {
 	// track unique circuit ids
@@ -1220,6 +1610,7 @@ var Circuit = (function CircuitFactory() {
 	// constructor
 	var Circuit = function Circuit(type, inputs, outputs, label) {
 		inputs = inputs || 0;
+
 		outputs = outputs || 0;
 
 		// unique circuit id
@@ -1450,6 +1841,10 @@ var Circuit = (function CircuitFactory() {
 		if (typeof updateShortcuts === 'function') {
 			updateShortcuts();
 		}
+		// push undo snapshot after adding (only if app is fully initialised)
+		if (app && typeof app.pushUndo === 'function' && app._undoReady) {
+			app.pushUndo();
+		}
 	};
 
 	// remove circuit from stage and active array, recycling connected wires
@@ -1476,18 +1871,32 @@ var Circuit = (function CircuitFactory() {
 		if (typeof updateShortcuts === 'function') {
 			updateShortcuts();
 		}
+		// Also remove from selection if present
+		if (app && app.selection) {
+			var sidx = app.selection.indexOf(this);
+			if (sidx !== -1) app.selection.splice(sidx, 1);
+		}
 	};
 
 
 	// drag events — stored per-circuit instance so multi-touch works
 	var remove_box_size = 50;
 	function mouseDownHandler(evt) {
+		// Shift+click = select/deselect this circuit
+		if (evt.nativeEvent && evt.nativeEvent.shiftKey) {
+			app.selectCircuit(this, true);
+			return;
+		}
+		// Regular click: clear selection, then start drag
 		app.delete_btn.show();
 		this._dragOffsetX = evt.localX;
 		this._dragOffsetY = evt.localY;
+		this._dragged = false;
 	}
 
 	function pressMoveHandler(evt) {
+		if (!app.delete_btn.element.classList.contains('show')) return;
+		this._dragged = true;
 		if (evt.stageX < remove_box_size*app.scale && evt.stageY < remove_box_size*app.scale) {
 			app.delete_btn.active();
 		}
@@ -1496,13 +1905,23 @@ var Circuit = (function CircuitFactory() {
 		}
 
 		this.setPosition(this.gfx.x + evt.localX - (this._dragOffsetX || 0), this.gfx.y + evt.localY - (this._dragOffsetY || 0));
+		// Keep selection highlights in sync while dragging
+		if (app && typeof app._renderSelectionHighlights === 'function') {
+			app._renderSelectionHighlights();
+		}
 	}
 
 	function pressUpHandler(evt) {
 		app.delete_btn.inactive().hide();
 		if (evt.stageX < remove_box_size*app.scale && evt.stageY < remove_box_size*app.scale) {
+			// push undo before removing
+			if (app && typeof app.pushUndo === 'function') app.pushUndo();
 			this.remove();
+		} else if (this._dragged) {
+			// push undo after a successful drag-move
+			if (app && typeof app.pushUndo === 'function') app.pushUndo();
 		}
+		this._dragged = false;
 	}
 
 
@@ -1533,6 +1952,10 @@ var Circuit = (function CircuitFactory() {
 		this.globalY = 0;
 
 		this.recycleWires = function recycleWires() {
+			// push undo before removing wires via connector click
+			if (app && typeof app.pushUndo === 'function' && this.wires.length > 0) {
+				app.pushUndo();
+			}
 			for (var i = this.wires.length - 1; i >= 0; i--) {
 				Wire.recycle(this.wires[i]);
 			}

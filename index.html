@@ -37,6 +37,14 @@
         <i class="material-icons" style="font-size:22px;line-height:52px;">school</i>
       </div>
 
+      <!-- Undo / Redo -->
+      <div id="undoBtn" title="Undo" class="btn-disabled">
+        <i class="material-icons" style="font-size:22px;line-height:52px;">undo</i>
+      </div>
+      <div id="redoBtn" title="Redo" class="btn-disabled">
+        <i class="material-icons" style="font-size:22px;line-height:52px;">redo</i>
+      </div>
+
       <!-- Play / Pause (bottom-right, left of theme) -->
       <div id="playPauseBtn" title="Pause simulation">
         <i class="material-icons" id="playPauseIcon" style="font-size:22px;line-height:52px;">pause</i>
@@ -88,8 +96,25 @@
       <!-- Paused banner -->
       <div id="pauseBanner">⏸ SIMULATION PAUSED</div>
 
+      <!-- Selection floating bar -->
+      <div id="selectionBar">
+        <button id="selCopyBtn" class="sel-action-btn" title="Copy selected">
+          <i class="material-icons">content_copy</i>
+        </button>
+        <button id="selCutBtn" class="sel-action-btn" title="Cut selected">
+          <i class="material-icons">content_cut</i>
+        </button>
+        <button id="selPasteBtn" class="sel-action-btn" title="Paste" style="display:none">
+          <i class="material-icons">content_paste</i>
+        </button>
+        <div class="sel-bar-divider"></div>
+        <button id="selDeleteBtn" class="sel-action-btn sel-danger" title="Delete selected">
+          <i class="material-icons">delete</i>
+        </button>
+      </div>
+
       <!-- Hint text -->
-      <div id="instructionsHint">drag outputs → inputs &nbsp;·&nbsp; drag canvas to pan &nbsp;·&nbsp; scroll / buttons to zoom &nbsp;·&nbsp; drop on ✕ to delete</div>
+      <div id="instructionsHint">drag outputs → inputs &nbsp;·&nbsp; shift+click or shift+drag to select &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; drop on ✕ to delete</div>
 
       <!-- Welcome toast -->
       <div id="welcomeToast">⚡ Logic Gates Simulator &nbsp;·&nbsp; Try an example from the ✦ menu!</div>
