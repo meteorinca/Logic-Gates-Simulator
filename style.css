@@ -384,7 +384,25 @@ html[data-theme="dark"] .badge-basic        { color: #34d399; border-color: rgba
 html[data-theme="dark"] .badge-intermediate { color: #60a5fa; border-color: rgba(96,165,250,0.3); }
 html[data-theme="dark"] .badge-advanced     { color: #c084fc; border-color: rgba(192,132,252,0.3); }
 
-.example-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.example-name { font-size: 13px; font-weight: 600; color: var(--text-primary); flex-grow: 1; }
+
+.copy-link-btn {
+  font-size: 16px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s, transform 0.15s;
+}
+.example-item:hover .copy-link-btn {
+  opacity: 0.7;
+}
+.copy-link-btn:hover {
+  opacity: 1 !important;
+  color: var(--btn-color);
+  transform: scale(1.1);
+}
+.copy-link-btn:active {
+  transform: scale(0.95);
+}
 .example-desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 .example-chips { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
 .chip-tag {

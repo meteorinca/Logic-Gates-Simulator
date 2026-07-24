@@ -145,6 +145,10 @@ document.addEventListener('DOMContentLoaded', function() {
 			window.app.setZoom(window.app.zoom * zoomFactor, e.clientX, e.clientY);
 		}
 	}, { passive: false });
+
+	window.addEventListener('hashchange', function() {
+		loadFromHash();
+	});
 });
 
 
@@ -219,18 +223,27 @@ function initExamplesPanel() {
 	EXAMPLES.forEach(function(ex, idx) {
 		var item = document.createElement('div');
 		item.className = 'example-item';
+		var slug = ex.name.replace(/\s+/g, '');
 		item.innerHTML =
 			'<div class="example-item-header">' +
 				'<span class="example-badge badge-' + ex.badge + '">' + ex.badge + '</span>' +
 				'<span class="example-name">' + ex.name + '</span>' +
+				'<i class="material-icons copy-link-btn" title="Copy Link to Example" data-slug="' + slug + '">link</i>' +
 			'</div>' +
 			'<div class="example-desc">' + ex.desc + '</div>' +
 			'<div class="example-chips">' +
 				ex.tags.map(function(t) { return '<span class="chip-tag">' + t + '</span>'; }).join('') +
 			'</div>';
 
-		item.addEventListener('click', function() {
-			loadExample(ex.data);
+		item.addEventListener('click', function(e) {
+			if (e.target.classList.contains('copy-link-btn')) {
+				e.stopPropagation();
+				var url = window.location.origin + window.location.pathname + '#' + e.target.getAttribute('data-slug');
+				copyTextToClipboard(url);
+				showToast('Link copied to clipboard!');
+				return;
+			}
+			window.location.hash = slug;
 			closePanel();
 		});
 
@@ -683,13 +696,15 @@ function AppFactory(Circuit, Wire) {
 
 	// Load the AND gate example as the default starting circuit
 	setTimeout(function() {
-		if (typeof EXAMPLES !== 'undefined' && EXAMPLES.length) {
-			loadExample(EXAMPLES[0].data);
-		} else {
-			var centerX = window.innerWidth / 2;
-			var centerY = window.innerHeight / 2;
-			makeButton(centerX - 100, centerY);
-			makeLight(centerX + 100, centerY);
+		if (!loadFromHash()) {
+			if (typeof EXAMPLES !== 'undefined' && EXAMPLES.length) {
+				loadExample(EXAMPLES[0].data);
+			} else {
+				var centerX = window.innerWidth / 2;
+				var centerY = window.innerHeight / 2;
+				makeButton(centerX - 100, centerY);
+				makeLight(centerX + 100, centerY);
+			}
 		}
 	}, 100);
 
@@ -1272,33 +1287,59 @@ var Circuit = (function CircuitFactory() {
 		this.determinePowerState;
 
 		// add connectors
-		var angle_space;
-		var angle_start;
+		var getConnectorOffset = function(type, isInput, index, total) {
+			if (type === 'and') {
+				if (!isInput) return { x: 28, y: 0 };
+				return { x: -24, y: total > 1 ? (index === 0 ? -12 : 12) : 0 };
+			}
+			if (type === 'or' || type === 'nor') {
+				if (!isInput) return { x: type === 'nor' ? 33 : 30, y: 0 };
+				return { x: -23, y: total > 1 ? (index === 0 ? -12 : 12) : 0 };
+			}
+			if (type === 'xor') {
+				if (!isInput) return { x: 30, y: 0 };
+				return { x: -31, y: total > 1 ? (index === 0 ? -12 : 12) : 0 };
+			}
+			if (type === 'not') {
+				if (!isInput) return { x: 26, y: 0 };
+				return { x: -24, y: 0 };
+			}
+			if (type === 'button') return { x: 20, y: 0 };
+			if (type === 'light') return { x: -20, y: 0 };
+			
+			// Default radial positioning for others like memory, ticker, delay
+			var angle_space = Math.PI / 6;
+			var angle_start = isInput 
+				? -angle_space * (total - 1) / 2 - Math.PI / 2
+				: -angle_space * (total - 1) / 2 + Math.PI / 2;
+			var current_angle = angle_space * index + angle_start;
+			return {
+				x: Math.sin(current_angle) * 40,
+				y: -Math.cos(current_angle) * 40
+			};
+		};
+
 		// input
-		angle_space = Math.PI / 6;
-		angle_start = -angle_space * (inputs - 1) / 2 - Math.PI / 2;
 		for (var i = 0; i < inputs; i++) {
-			var current_angle = angle_space * i + angle_start;
 			var connector = new Connector('input', this);
 			this.inputs.push(connector);
 			connector.index = i;
-			connector.gfx.x = Math.sin(current_angle) * this.chip_radius;
-			connector.gfx.y = -Math.cos(current_angle) * this.chip_radius;
+			var offset = getConnectorOffset(type, true, i, inputs);
+			connector.gfx.x = offset.x;
+			connector.gfx.y = offset.y;
 			this.gfx.addChild(connector.gfx);
 
 			// build simple_inputs array as well
 			this.simple_inputs.push(false);
 		}
 		// output
-		angle_space = Math.PI / 6;
-		angle_start = -angle_space * (outputs - 1) / 2 + Math.PI / 2;
 		for (var i = 0; i < outputs; i++) {
-			var current_angle = angle_space * i + angle_start;
 			var connector = new Connector('output', this);
 			this.outputs.push(connector);
 			connector.index = i;
-			connector.gfx.x = Math.sin(current_angle) * this.chip_radius;
-			connector.gfx.y = -Math.cos(current_angle) * this.chip_radius;
+			var offset = getConnectorOffset(type, false, i, outputs);
+			connector.gfx.x = offset.x;
+			connector.gfx.y = offset.y;
 			this.gfx.addChild(connector.gfx);
 		}
 
@@ -2014,4 +2055,49 @@ function copyTextToClipboard(text) {
 	}
 	
 	return copy_successful;
+}
+
+function repropagateAll() {
+	if (typeof Circuit === 'undefined' || !Circuit.active) return;
+	Circuit.active.forEach(function(c) {
+		if (typeof c.inputChange === 'function') c.inputChange();
+	});
+	Circuit.active.forEach(function(c) {
+		if (typeof c.broadcastPower === 'function') c.broadcastPower();
+	});
+}
+
+function loadFromHash() {
+	var hash = window.location.hash.replace(/^#/, '').trim();
+	if (!hash) return false;
+
+	var normalizedHash = hash.toLowerCase().replace(/[\s\-_]/g, '');
+	var found = EXAMPLES.find(function(ex) {
+		var normalizedName = ex.name.toLowerCase().replace(/[\s\-_]/g, '');
+		return normalizedName === normalizedHash || (normalizedName + 'gate') === normalizedHash;
+	});
+
+	if (found) {
+		loadExample(found.data);
+		showToast('Loaded example: ' + found.name);
+		return true;
+	} else if (hash.indexOf('data=') === 0 || hash.indexOf('json=') === 0) {
+		try {
+			var raw = decodeURIComponent(hash.substring(hash.indexOf('=') + 1));
+			loadProject(raw);
+			showToast('Loaded custom circuit from link');
+			return true;
+		} catch(e) {}
+	}
+	return false;
+}
+
+function showToast(msg) {
+	var toast = document.getElementById('welcomeToast');
+	if (toast) {
+		toast.innerHTML = msg;
+		toast.style.animation = 'none';
+		toast.offsetHeight;
+		toast.style.animation = 'toastIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards, toastOut 0.4s ease 4s forwards';
+	}
 }
