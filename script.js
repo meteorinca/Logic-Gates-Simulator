@@ -116,6 +116,35 @@ document.addEventListener('DOMContentLoaded', function() {
 			pauseBanner.classList.add('visible');
 		}
 	});
+
+	// ── Zoom controls ─────────────────────────────────
+	var zoomInBtn    = document.getElementById('zoomInBtn');
+	var zoomOutBtn   = document.getElementById('zoomOutBtn');
+	var zoomResetBtn = document.getElementById('zoomResetBtn');
+
+	if (zoomInBtn) {
+		zoomInBtn.addEventListener('click', function() {
+			if (window.app && window.app.setZoom) window.app.setZoom(window.app.zoom * 1.25);
+		});
+	}
+	if (zoomOutBtn) {
+		zoomOutBtn.addEventListener('click', function() {
+			if (window.app && window.app.setZoom) window.app.setZoom(window.app.zoom / 1.25);
+		});
+	}
+	if (zoomResetBtn) {
+		zoomResetBtn.addEventListener('click', function() {
+			if (window.app && window.app.setZoom) window.app.setZoom(1.0);
+		});
+	}
+
+	window.addEventListener('wheel', function(e) {
+		if ((e.target.tagName === 'CANVAS' || e.target.id === 'appWrap') && window.app && window.app.setZoom) {
+			e.preventDefault();
+			var zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+			window.app.setZoom(window.app.zoom * zoomFactor, e.clientX, e.clientY);
+		}
+	}, { passive: false });
 });
 
 
@@ -251,8 +280,8 @@ function loadExample(jsonStr) {
 	// position canvas at center
 	var cx = app.stage.canvas.width / 2 / app.scale;
 	var cy = app.stage.canvas.height / 2 / app.scale;
-	app.circuits.x = app.wires.x = cx + (data.canvas ? data.canvas.x : 0);
-	app.circuits.y = app.wires.y = cy + (data.canvas ? data.canvas.y : 0);
+	app.circuits.x = app.wires.x = cx + (data.canvas ? data.canvas.x : 0) * app.zoom;
+	app.circuits.y = app.wires.y = cy + (data.canvas ? data.canvas.y : 0) * app.zoom;
 
 	// create circuits
 	var highest_id = 0;
@@ -414,6 +443,34 @@ function AppFactory(Circuit, Wire) {
 		}
 	};
 
+	// Zoom system
+	App.zoom = 1.0;
+	App.minZoom = 0.25;
+	App.maxZoom = 3.0;
+
+	App.setZoom = function setZoom(newZoom, screenX, screenY) {
+		newZoom = Math.max(App.minZoom, Math.min(App.maxZoom, newZoom));
+		if (newZoom === App.zoom) return;
+
+		if (screenX === undefined) screenX = window.innerWidth / 2;
+		if (screenY === undefined) screenY = window.innerHeight / 2;
+
+		var mx = screenX / App.scale;
+		var my = screenY / App.scale;
+
+		var wx = (mx - App.circuits.x) / App.zoom;
+		var wy = (my - App.circuits.y) / App.zoom;
+
+		App.zoom = newZoom;
+		App.circuits.scaleX = App.circuits.scaleY = App.zoom;
+		App.wires.scaleX = App.wires.scaleY = App.zoom;
+
+		App.circuits.x = App.wires.x = mx - wx * App.zoom;
+		App.circuits.y = App.wires.y = my - wy * App.zoom;
+
+		App.needs_update = true;
+	};
+
 	// add menu functionlity
 	App.add_menu = (function menuFactory() {
 		var Menu = {};
@@ -452,7 +509,9 @@ function AppFactory(Circuit, Wire) {
 			btn.addEventListener('click', function() {
 				var centerX = window.innerWidth / 2;
 				var centerY = window.innerHeight / 2;
-				factory(centerX - App.wires.x, centerY - App.wires.y);
+				var localPt = new createjs.Point();
+				App.circuits.globalToLocal(centerX * App.scale, centerY * App.scale, localPt);
+				factory(localPt.x, localPt.y);
 			});
 		}
 
@@ -524,26 +583,27 @@ function AppFactory(Circuit, Wire) {
 
 	// mouse event handlers - scope is set to originating connector
 	App.startNewWire = function startNewWire(evt) {
-		var temp_pt = App.wires.localToGlobal(this.globalX, this.globalY);
-		temp_pt.x /= App.scale;
-		temp_pt.y /= App.scale;
-		App.new_wire.output.globalX = temp_pt.x;
-		App.new_wire.output.globalY = temp_pt.y;
-		App.new_wire.input.globalX = evt.stageX / App.scale;
-		App.new_wire.input.globalY = evt.stageY / App.scale;
+		App.new_wire.output.globalX = this.globalX;
+		App.new_wire.output.globalY = this.globalY;
+		var pt = new createjs.Point();
+		App.wires.globalToLocal(evt.stageX, evt.stageY, pt);
+		App.new_wire.input.globalX = pt.x;
+		App.new_wire.input.globalY = pt.y;
 		App.new_wire.draw(true);
-		App.stage.addChild(App.new_wire.gfx);
+		App.wires.addChild(App.new_wire.gfx);
 	};
 
 	App.dragNewWire = function dragNewWire(evt) {
-		App.new_wire.input.globalX = evt.stageX / App.scale;
-		App.new_wire.input.globalY = evt.stageY / App.scale;
+		var pt = new createjs.Point();
+		App.wires.globalToLocal(evt.stageX, evt.stageY, pt);
+		App.new_wire.input.globalX = pt.x;
+		App.new_wire.input.globalY = pt.y;
 		App.new_wire.draw(true);
 	};
 
 	App.endNewWire = function endNewWire(evt) {
 		App.needs_update = true;
-		App.stage.removeChild(App.new_wire.gfx);
+		App.wires.removeChild(App.new_wire.gfx);
 
 		// loop through input connectors of other circuits to see if a connection was made
 		var connector;
@@ -586,9 +646,6 @@ function AppFactory(Circuit, Wire) {
 		if (!evt.relatedTarget) {
 			dragging_stage = true;
 			App.wires.globalToLocal(evt.rawX, evt.rawY, stage_offset);
-			// stage_offset.x = evt.rawX - App.wires.x;
-			// stage_offset.y = evt.rawY - App.wires.y;
-			// console.log(stage_offset);
 		}
 	});
 
@@ -596,8 +653,8 @@ function AppFactory(Circuit, Wire) {
 		if (dragging_stage) {
 			App.needs_update = true;
 
-			var new_x = (evt.rawX / App.scale) - stage_offset.x;
-			var new_y = (evt.rawY / App.scale) - stage_offset.y;
+			var new_x = (evt.rawX / App.scale) - stage_offset.x * App.zoom;
+			var new_y = (evt.rawY / App.scale) - stage_offset.y * App.zoom;
 			App.wires.x = new_x;
 			App.wires.y = new_y;
 			App.circuits.x = new_x;
