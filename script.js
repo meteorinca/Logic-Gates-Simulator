@@ -1106,15 +1106,12 @@ function makeTicker(x, y, set_off_time) {
 	// create label
 	var label = new createjs.Text(off_time, '18px Arial', '#FFF');
 	label.textAlign = 'center';
-	label.cache(-c.chip_radius, 0, c.chip_radius * 2, 20);
 	c.draggable.addChild(label);
 	label.x = 0;
 	label.y = -10;
 
 	function renderLabel() {
 		label.text = off_time;
-		label.updateCache();
-		c.gfx.updateCache();
 		app.needs_update = true;
 	}
 
@@ -1164,15 +1161,12 @@ function makeDelay(x, y, delay) {
 	// create label
 	var label = new createjs.Text(c.delay, '18px Arial', '#FFF');
 	label.textAlign = 'center';
-	label.cache(-c.chip_radius, 0, c.chip_radius * 2, 20);
 	c.draggable.addChild(label);
 	label.x = 0;
 	label.y = -10;
 
 	function renderLabel() {
 		label.text = c.delay;
-		label.updateCache();
-		c.gfx.updateCache();
 		app.needs_update = true;
 	}
 
@@ -1200,8 +1194,6 @@ function makeDelay(x, y, delay) {
 		renderLabel();
 	});
 
-	c.gfx.updateCache();
-
 	return c;
 }
 
@@ -1222,8 +1214,6 @@ var Circuit = (function CircuitFactory() {
 		// type of circuit
 		this.type = type;
 
-		// wrapper helps with rendering cached graphics at high PPI
-		// this.gfx_wrap = new createjs.Container();
 		// container for all children elements
 		this.gfx = new createjs.Container();
 		// container for elements that allow dragging circuit
@@ -1250,8 +1240,6 @@ var Circuit = (function CircuitFactory() {
 
 			this.label = new createjs.Text(label, '900 13px "JetBrains Mono", monospace', labelColor);
 			this.label.textAlign = 'center';
-			var label_rect = this.label.getBounds();
-			this.label.cache(label_rect.x - 2, label_rect.y - 2, label_rect.width + 4, label_rect.height + 4);
 			this.label.x = (type === 'not') ? -6 : ((type === 'and' || type === 'or' || type === 'xor' || type === 'nor') ? -2 : 0);
 			this.label.y = -7;
 			this.draggable.addChild(this.label);
@@ -1319,10 +1307,6 @@ var Circuit = (function CircuitFactory() {
 		this.draggable.on('mousedown', mouseDownHandler, this);
 		this.draggable.on('pressmove', pressMoveHandler, this);
 		this.draggable.on('pressup', pressUpHandler, this);
-
-		// cache circuit
-		var cache_radius = this.chip_radius + connector_radius + 1;
-		this.gfx.cache(-cache_radius, -cache_radius, cache_radius * 2, cache_radius * 2);
 	};
 
 
