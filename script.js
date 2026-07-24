@@ -170,6 +170,24 @@ document.addEventListener('DOMContentLoaded', function() {
 		}
 	}, { passive: false });
 
+	// ── Select Mode Toggle ─────────────────────────────
+	App.selectMode = false;
+	var selectModeBtn = document.getElementById('selectModeBtn');
+	if (selectModeBtn) {
+		selectModeBtn.addEventListener('click', function() {
+			App.selectMode = !App.selectMode;
+			if (App.selectMode) {
+				selectModeBtn.classList.add('active');
+				selectModeBtn.style.color = 'var(--neon-cyan)';
+				selectModeBtn.style.borderColor = 'var(--border-hover)';
+			} else {
+				selectModeBtn.classList.remove('active');
+				selectModeBtn.style.color = '';
+				selectModeBtn.style.borderColor = '';
+			}
+		});
+	}
+
 	window.addEventListener('hashchange', function() {
 		loadFromHash();
 	});
@@ -234,6 +252,13 @@ var EXAMPLES = [
 		badge: 'advanced',
 		tags: ['TCK', 'OUT'],
 		data: '{"canvas":{"x":-140,"y":-60},"circuits":[{"type":"ticker","id":0,"x":120,"y":200,"data":{"off_time":6},"output_connections":[{"wires":[{"input_circuit_id":1,"input_index":0}]}]},{"type":"light","id":1,"x":340,"y":200}]}'
+	},
+	{
+		name: 'Full Adder',
+		desc: 'Adds three bits (A, B, Cin). Top light = Carry, Bottom = Sum.',
+		badge: 'advanced',
+		tags: ['XOR', 'AND', 'OR', 'IN', 'OUT'],
+		data: '{"canvas":{"x":-300,"y":-120},"circuits":[{"type":"button","id":0,"x":80,"y":100,"output_connections":[{"wires":[{"input_circuit_id":3,"input_index":0},{"input_circuit_id":5,"input_index":0}]}]},{"type":"button","id":1,"x":80,"y":200,"output_connections":[{"wires":[{"input_circuit_id":3,"input_index":1},{"input_circuit_id":5,"input_index":1}]}]},{"type":"button","id":2,"x":80,"y":300,"output_connections":[{"wires":[{"input_circuit_id":4,"input_index":1},{"input_circuit_id":6,"input_index":0}]}]},{"type":"xor","id":3,"x":280,"y":150,"output_connections":[{"wires":[{"input_circuit_id":4,"input_index":0},{"input_circuit_id":6,"input_index":1}]}]},{"type":"xor","id":4,"x":480,"y":200,"output_connections":[{"wires":[{"input_circuit_id":8,"input_index":0}]}]},{"type":"and","id":5,"x":280,"y":50,"output_connections":[{"wires":[{"input_circuit_id":7,"input_index":0}]}]},{"type":"and","id":6,"x":480,"y":300,"output_connections":[{"wires":[{"input_circuit_id":7,"input_index":1}]}]},{"type":"or","id":7,"x":680,"y":175,"output_connections":[{"wires":[{"input_circuit_id":9,"input_index":0}]}]},{"type":"light","id":8,"x":680,"y":250},{"type":"light","id":9,"x":880,"y":175}]}'
 	}
 ];
 
@@ -956,7 +981,7 @@ function AppFactory(Circuit, Wire) {
 	var stage_offset = new createjs.Point();
 	App.stage.on('stagemousedown', function(evt) {
 		if (!evt.relatedTarget) {
-			if (evt.nativeEvent && evt.nativeEvent.shiftKey) {
+			if (App.selectMode || (evt.nativeEvent && evt.nativeEvent.shiftKey)) {
 				// begin rubber-band
 				rubber_band = true;
 				rb_startX = evt.rawX;
