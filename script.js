@@ -82,7 +82,6 @@ document.addEventListener('DOMContentLoaded', function() {
 			if (typeof c.renderModeBtn === 'function') {
 				c.renderModeBtn();
 			}
-			c.gfx.updateCache();
 		});
 		if (typeof updateShortcuts === 'function') {
 			updateShortcuts();
@@ -852,7 +851,7 @@ function makeButton(x, y) {
 		toggle_btn.graphics.lineTo(0, 4);
 		toggle_btn.graphics.endStroke();
 
-		c.gfx.updateCache();
+		if (typeof app !== 'undefined') app.needs_update = true;
 	}
 
 	function renderModeBtn() {
@@ -876,7 +875,7 @@ function makeButton(x, y) {
 			.setStrokeStyle(1).beginStroke(active ? '#00f5ff' : '#64748b')
 			.drawCircle(active ? 4 : -4, 0, 4.5);
 			
-		c.gfx.updateCache();
+		if (typeof app !== 'undefined') app.needs_update = true;
 	}
 
 	// initial render
@@ -921,7 +920,7 @@ function makeLight(x, y) {
 		light_gfx.graphics.beginFill(light_color);
 		light_gfx.graphics.drawCircle(0, 0, 18);
 
-		c.gfx.updateCache();
+		if (typeof app !== 'undefined') app.needs_update = true;
 	}
 
 	renderLight();
@@ -1021,7 +1020,7 @@ function makeMemory(x, y, state) {
 		light_gfx.graphics.beginFill(light_color);
 		light_gfx.graphics.drawCircle(0, 0, 14);
 
-		c.gfx.updateCache();
+		if (typeof app !== 'undefined') app.needs_update = true;
 	}
 
 
@@ -1112,7 +1111,7 @@ function makeTicker(x, y, set_off_time) {
 		light_gfx.graphics.beginFill(light_color);
 		light_gfx.graphics.drawCircle(0, 0, 18);
 
-		c.gfx.updateCache();
+		if (typeof app !== 'undefined') app.needs_update = true;
 	}
 
 	// initial render
@@ -1156,7 +1155,7 @@ function makeTicker(x, y, set_off_time) {
 		renderLabel();
 	});
 
-	c.gfx.updateCache();
+	if (typeof app !== 'undefined') app.needs_update = true;
 
 
 	return c;
@@ -1856,7 +1855,7 @@ function updateShortcuts() {
 			container.addChild(bg, text);
 			c.draggable.addChild(container);
 			c.shortcutGfx = container;
-			c.gfx.updateCache();
+			// updated shortcuts
 		}
 	});
 	
